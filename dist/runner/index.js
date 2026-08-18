@@ -65,16 +65,8 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
     const plan = cells(e, casesLoaded);
     if (plan.length > e.run.max_runs)
         throw new Error("E_CONFIG: max_runs exceeded");
-    let template = resolveInput(experimentFile, e.workspace_template);
-    try {
-        await safeTree(template);
-    }
-    catch (error) {
-        if (error.code !== "ENOENT")
-            throw error;
-        template = path.resolve(path.dirname(experimentFile), "repo");
-        await safeTree(template);
-    }
+    const template = resolveInput(experimentFile, e.workspace_template);
+    await safeTree(template);
     for (const variant of e.variants) {
         await readFile(resolveInput(experimentFile, variant.patch));
     }

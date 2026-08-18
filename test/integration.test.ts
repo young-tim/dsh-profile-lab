@@ -8,7 +8,6 @@ describe("matrix runner", () => {
   it("resumes completed cells without duplicate invocations or source writes", async () => {
     const out = await mkdtemp(path.join(tmpdir(), "lab-out-"));
     const e = await loadExperiment("examples/experiment.yml");
-    e.workspace_template = path.resolve(e.workspace_template);
     const before = await readFile("fixtures/repo/README", "utf8");
     const once = await run(e, out, path.resolve("fixtures/fake-dsh"));
     const twice = await run(e, out, path.resolve("fixtures/fake-dsh"));
@@ -20,7 +19,6 @@ describe("matrix runner", () => {
   it("rejects driver output with no durable end event", async () => {
     const out = await mkdtemp(path.join(tmpdir(), "lab-out-"));
     const e = await loadExperiment("examples/experiment.yml");
-    e.workspace_template = path.resolve(e.workspace_template);
     await expect(
       run(e, out, path.resolve("fixtures/fake-noevents")),
     ).rejects.toThrow("no turn/end");
