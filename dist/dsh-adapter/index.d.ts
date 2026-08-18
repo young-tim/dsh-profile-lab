@@ -21,6 +21,11 @@ export type SessionEvent = {
     [key: string]: unknown;
 };
 export declare const parseJsonl: (text: string) => SessionEvent[];
+export type SessionRead = {
+    events: SessionEvent[];
+    corrupt_frames: number;
+};
+export declare const parseSessionBuffer: (buffer: Buffer, compressed?: boolean) => SessionRead;
 export declare const readSession: (file: string) => Promise<SessionEvent[]>;
 export declare const finalOutput: (events: SessionEvent[]) => string;
 export declare const toolNames: (events: SessionEvent[]) => string[];

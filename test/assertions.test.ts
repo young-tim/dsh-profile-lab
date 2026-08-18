@@ -64,4 +64,15 @@ describe("assertion engine advanced contracts", () => {
     expect(result.failures[0]?.code).toBe("output_judge");
     expect(judge).toHaveBeenCalledOnce();
   });
+  it("reports a configured judge without an adapter", async () => {
+    await expect(
+      evaluateCaseWithJudge(
+        { name: "x", prompt: "p", assert: { output_judge: "quality" } },
+        events,
+      ),
+    ).resolves.toMatchObject({
+      ok: false,
+      failures: [{ code: "output_judge_unavailable" }],
+    });
+  });
 });

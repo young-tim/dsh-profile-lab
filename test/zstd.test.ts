@@ -3,7 +3,11 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { zstdCompressSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { projectCell, readSession } from "../src/dsh-adapter/index.js";
+import {
+  parseSessionBuffer,
+  projectCell,
+  readSession,
+} from "../src/dsh-adapter/index.js";
 
 const jsonl =
   [
@@ -69,5 +73,25 @@ describe("zstd official event fixtures", () => {
         "bad",
       ).status,
     ).toBe("error");
+  });
+
+  it("supports uncompressed buffers and records corrupted compressed buffers", () => {
+    expect(parseSessionBuffer(Buffer.from(jsonl)).events).toHaveLength(4);
+    expect(
+      parseSessionBuffer(Buffer.from("invalid"), true).corrupt_frames,
+    ).toBe(1);
+  });
+
+  it("retains legacy final events while projecting an aborted turn", () => {
+    const cell = projectCell(
+      { id: "legacy", variant: "v", case: "c", repetition: 1 },
+      [
+        { type: "assistant/final", text: "legacy" },
+        { type: "turn/end", status: "aborted" },
+      ],
+      "legacy",
+    );
+    expect(cell.status).toBe("cancelled");
+    expect(cell.final_output_hash).not.toBe("");
   });
 });

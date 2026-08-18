@@ -179,6 +179,16 @@ describe("strict command and configuration boundaries", () => {
       await loadCases("examples/experiment.yml", e, { tags: undefined }),
     ).toHaveLength(2);
   });
+  it("accepts an explicit child environment allowlist", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "allowlist-"));
+    await writeFile(
+      path.join(root, "experiment.yml"),
+      "schema_version: 1\nname: x\ncases_dir: cases\nworkspace_template: repo\nbaseline: a\nvariants: [{ id: a, profile: headless, patch: a.yml }, { id: b, profile: headless, patch: b.yml }]\nrepetitions: 1\nrun: { concurrency: 1, timeout_ms: 1, max_runs: 2, max_total_tokens: 0, env_allowlist: [SAFE_VALUE] }\n",
+    );
+    await expect(
+      loadExperiment(path.join(root, "experiment.yml")),
+    ).resolves.toMatchObject({ run: { env_allowlist: ["SAFE_VALUE"] } });
+  });
   it("rejects a duplicate case before execution", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "duplicate-"));
     await mkdir(path.join(root, "cases"));
