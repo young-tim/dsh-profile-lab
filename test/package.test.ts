@@ -41,6 +41,24 @@ describe("package surface", () =>
   }));
 
 describe("packed package", () => {
+  it("is accepted as a named row by the official DSH overlay loader", async () => {
+    const home = await mkdtemp(path.join(tmpdir(), "profile-lab-dsh-home-"));
+    const { stdout } = await execute(
+      "pnpm",
+      [
+        "exec",
+        "dsh",
+        "--profile",
+        "headless",
+        "--patch",
+        path.resolve("cordis.patch.yml"),
+        "--dump-config",
+      ],
+      { cwd: process.cwd(), env: { ...process.env, DSH_HOME: home } },
+    );
+    expect(stdout).toContain("id: dsh-profile-lab");
+  }, 30_000);
+
   it("installs the built tarball and executes its linked CLI", async () => {
     const destination = await mkdtemp(path.join(tmpdir(), "profile-lab-pack-"));
     await execute("pnpm", ["build"], { cwd: process.cwd() });
