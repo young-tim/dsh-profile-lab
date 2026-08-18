@@ -10,6 +10,8 @@ Environment: Node v24.12.0, pnpm 11.9.0, `@deepseek-ai/dsh` 0.1.0-rc.7. The froz
 - P0 event/assertion addition: `test/zstd.test.ts` proves JSONL and zstd fixtures project identical metrics; corrupt zstd projects an error. `test/assertions.test.ts` covers tool argument/result assertions and judge short-circuiting.
 - P0 runner/safety: isolated copied workspaces, symlink rejection, bounded concurrency and journal resume are covered by integration tests.
 - P0 reports/gate/tools: deterministic report render, policy 0/1 behavior and three registered DSH tools are covered by decision/package/plugin tests.
+- P1 package: `test:package` builds, creates a lifecycle-disabled tarball, installs it in a temporary package and executes its linked CLI. The official RC `dsh --profile headless --patch cordis.patch.yml --dump-config` smoke asserts the `dsh-profile-lab` overlay row.
+- P0 runner addition: budget exhaustion writes `run-state.json` and produces `incomplete: true` in reports/exit code 3; changed inputs reject resume through a manifest hash.
 
 ## Failure → implementation → passing proof
 

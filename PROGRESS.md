@@ -5,6 +5,6 @@
 - Completed: deterministic JSON/Markdown/HTML reports, baseline comparison/Pareto, policy gate, and three DSH tool registrations reuse services.
 - Evidence: zstd/advanced assertion tests, resume-input rejection, 85 tests, and coverage 92.15/85.50/95.71/93.73 pass.
 - Failure→fix→pass: concurrent journal lost a cell → serialized atomic writes → exact 20 cells; relative fixture lookup failed → experiment-relative fixtures → matrix passes; plugin gate always threw → explicit policy service → plugin gate test passes.
-- Completed: pack preflight and in-repository temporary install loaded the tarball and ran `schema valid`; gate exit paths 0/1/2/3 were exercised.
+- Completed: package test now builds, packs, temporarily installs and invokes the tarball CLI; official DSH RC accepts the Cordis overlay row.
 - Next: final command capture and clean commit.
 - Risk: OS SIGINT process-tree verification, report redaction/cost detail, and fully strict report-schema validation remain in progress.
