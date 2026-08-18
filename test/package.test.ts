@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { apply, profile_lab_gate } from "../src/plugin/index.js";
+const execute = promisify(execFile);
 describe("package surface", () =>
   it("ships one bundle row and three executable tools", async () => {
     const patch = await readFile("cordis.patch.yml", "utf8");
@@ -36,3 +39,36 @@ describe("package surface", () =>
     ).resolves.toMatchObject({ verdict: "pass", reasons: [] });
     await expect(profile_lab_gate()).rejects.toThrow("explicit policy");
   }));
+
+describe("packed package", () => {
+  it("installs the built tarball and executes its linked CLI", async () => {
+    const destination = await mkdtemp(path.join(tmpdir(), "profile-lab-pack-"));
+    await execute("pnpm", ["build"], { cwd: process.cwd() });
+    const { stdout } = await execute(
+      "pnpm",
+      [
+        "--config.ignore-scripts=true",
+        "pack",
+        "--pack-destination",
+        destination,
+      ],
+      { cwd: process.cwd() },
+    );
+    expect(stdout).toContain("dsh-profile-lab");
+    const tarball = path.join(destination, "dsh-profile-lab-0.1.0.tgz");
+    const install = await mkdtemp(path.join(tmpdir(), "profile-lab-install-"));
+    await execute("pnpm", ["add", tarball], { cwd: install });
+    const result = await execute(
+      "pnpm",
+      [
+        "exec",
+        "dsh-profile-lab",
+        "schema",
+        "--check",
+        path.resolve("examples/experiment.yml"),
+      ],
+      { cwd: install },
+    );
+    expect(result.stdout).toContain("schema valid");
+  }, 30_000);
+});
