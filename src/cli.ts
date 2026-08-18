@@ -105,6 +105,8 @@ const invoked =
   process.argv[1] &&
   (import.meta.url === new URL(process.argv[1], "file:").href ||
     import.meta.url.endsWith("/dist/cli.js"));
+export const exitCodeForError = (error: unknown) =>
+  String((error as Error).message).startsWith("E_RUN:") ? 3 : 2;
 if (invoked)
   main()
     .then((code) => {
@@ -112,5 +114,5 @@ if (invoked)
     })
     .catch((error) => {
       console.error((error as Error).message);
-      process.exitCode = 2;
+      process.exitCode = exitCodeForError(error);
     });

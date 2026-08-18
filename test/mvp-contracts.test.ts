@@ -8,7 +8,7 @@ import {
 } from "../src/dsh-adapter/index.js";
 import { cells } from "../src/runner/index.js";
 import { gate } from "../src/gate/index.js";
-import { main } from "../src/cli.js";
+import { exitCodeForError, main } from "../src/cli.js";
 import { loadExperiment } from "../src/config/index.js";
 import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -199,6 +199,10 @@ describe("strict command and configuration boundaries", () => {
 });
 
 describe("plugin service boundary", () => {
+  it("maps infrastructure errors to exit code 3", () => {
+    expect(exitCodeForError(new Error("E_RUN: broken"))).toBe(3);
+    expect(exitCodeForError(new Error("E_CONFIG: broken"))).toBe(2);
+  });
   it("returns real gate reasons through the plugin service", async () => {
     const out = await mkdtemp(path.join(tmpdir(), "plugin-gate-"));
     await writeFile(path.join(out, "journal.json"), JSON.stringify([]));

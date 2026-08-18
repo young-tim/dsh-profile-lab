@@ -1,0 +1,3 @@
+min_candidate_pass_rate: 0
+max_pass_rate_drop_pp: 100
+max_error_rate: 1
