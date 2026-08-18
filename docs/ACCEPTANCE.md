@@ -40,5 +40,5 @@ temporary in-repository install → `pnpm exec dsh-profile-lab schema --check ..
 gate pass policy / regression policy / missing output / no-end driver → exit 0 / 1 / 2 / 3
 strict report schema → `ajv ... --spec=draft2020` → valid; repeated compare report SHA-256 values are identical (`21662f767abb11793f164ce0c8a120051b75b26e6bbaa5c00bf6b20da98ac01e`)
 matrix assertion → 20 cells, 2 variants, 2 cases
-package artifact → `.profile-lab/package/dsh-profile-lab-0.1.0.tgz`
+package artifact → `.profile-lab/package/dsh-profile-lab-0.1.0.tgz` SHA-256 `87d3c981eeab81a6fba746499d316a7fecfccd63b2394f0ad26d27d5a1082c73`
 ```
