@@ -8,7 +8,7 @@ import {
   projectCell,
   readSession,
 } from "../src/dsh-adapter/index.js";
-import { report } from "../src/report/index.js";
+import { redact, report } from "../src/report/index.js";
 import type { Cell, Experiment, Summary } from "../src/types.js";
 const summary = (pass_rate: number, error_rate = 0): Summary => ({
   variant: "x",
@@ -94,6 +94,11 @@ describe("decision services", () => {
 });
 
 describe("explicit pricing decisions", () => {
+  it("redacts token and authorization values", () => {
+    expect(
+      redact("ds_abcdefghijklmnopqrstuvwxyz Authorization: secret-value"),
+    ).toBe("[REDACTED] Authorization: [REDACTED]");
+  });
   it("does not fabricate cost or Pareto members without pricing", async () => {
     const d = await mkdtemp(path.join(tmpdir(), "report-price-"));
     const e = {

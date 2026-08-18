@@ -1,4 +1,5 @@
 import type { Cell, Experiment } from "../types.js";
+export declare const redact: (value: string) => string;
 export declare const report: (dir: string, e: Experiment, cells: Cell[]) => Promise<{
     $schema: string;
     version: number;

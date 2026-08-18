@@ -2,6 +2,21 @@ import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pareto, pct, summarize } from "../stats/index.js";
 const esc = (x) => x.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+export const redact = (value) => value
+    .replace(/\b(?:sk|ds|api)[_-][A-Za-z0-9_-]{8,}\b/gi, "[REDACTED]")
+    .replace(/(authorization\s*[:=]\s*)([^\s,;]+)/gi, "$1[REDACTED]");
+const sanitized = (value) => {
+    if (typeof value === "string")
+        return redact(value);
+    if (Array.isArray(value))
+        return value.map(sanitized);
+    if (value && typeof value === "object")
+        return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+            key,
+            sanitized(item),
+        ]));
+    return value;
+};
 const put = async (file, text) => {
     await mkdir(path.dirname(file), { recursive: true });
     await writeFile(`${file}.tmp`, text);
@@ -51,7 +66,7 @@ export const report = async (dir, e, cells) => {
         per_case,
         comparisons,
         pareto: front,
-        cells: [...cells].sort((a, b) => a.id.localeCompare(b.id)),
+        cells: sanitized([...cells].sort((a, b) => a.id.localeCompare(b.id))),
     };
     await put(path.join(dir, "report.json"), JSON.stringify(data, null, 2) + "\n");
     const md = `# ${e.name}\n\nBaseline: ${baseline}\n\n| Variant | Pass rate | Median tokens |\n|---|---:|---:|\n${variants.map((v) => `| ${v.variant} | ${v.pass_rate} | ${v.median_tokens} |`).join("\n")}\n\n## Per case\n\n${per_case.map((v) => `- ${v.variant}/${v.case ?? ""}: ${v.pass}/${v.total} pass`).join("\n")}\n`;

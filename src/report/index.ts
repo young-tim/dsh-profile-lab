@@ -10,6 +10,22 @@ const esc = (x: string) =>
         c
       ]!,
   );
+export const redact = (value: string) =>
+  value
+    .replace(/\b(?:sk|ds|api)[_-][A-Za-z0-9_-]{8,}\b/gi, "[REDACTED]")
+    .replace(/(authorization\s*[:=]\s*)([^\s,;]+)/gi, "$1[REDACTED]");
+const sanitized = <T>(value: T): T => {
+  if (typeof value === "string") return redact(value) as T;
+  if (Array.isArray(value)) return value.map(sanitized) as T;
+  if (value && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+        key,
+        sanitized(item),
+      ]),
+    ) as T;
+  return value;
+};
 const put = async (file: string, text: string) => {
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(`${file}.tmp`, text);
@@ -73,7 +89,7 @@ export const report = async (dir: string, e: Experiment, cells: Cell[]) => {
     per_case,
     comparisons,
     pareto: front,
-    cells: [...cells].sort((a, b) => a.id.localeCompare(b.id)),
+    cells: sanitized([...cells].sort((a, b) => a.id.localeCompare(b.id))),
   };
   await put(
     path.join(dir, "report.json"),
