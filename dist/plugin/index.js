@@ -1,3 +1,4 @@
+import { defineTool } from '@deepseek-ai/dsh-tools';
 import { loadExperiment } from '../config/index.js';
 import { run } from '../runner/index.js';
 import { report } from '../report/index.js';
@@ -6,5 +7,9 @@ import path from 'node:path';
 export const profile_lab_run = async (input) => run(await loadExperiment(input.experiment), input.output, input.driver);
 export const profile_lab_compare = async (input) => report(input.output, await loadExperiment(input.experiment), JSON.parse(await readFile(path.join(input.output, 'journal.json'), 'utf8')));
 export const profile_lab_gate = async () => { throw new Error('use CLI gate with an explicit policy'); };
-export const apply = (ctx) => { ctx.tool?.('profile_lab_run', profile_lab_run); ctx.tool?.('profile_lab_compare', profile_lab_compare); ctx.tool?.('profile_lab_gate', profile_lab_gate); };
+export const name = 'dsh-profile-lab';
+export const inject = ['tools'];
+const schema = { type: 'object', additionalProperties: false, properties: { experiment: { type: 'string', required: true }, output: { type: 'string', required: true }, driver: { type: 'string' } } };
+const makeTool = defineTool;
+export const apply = (ctx) => { ctx.tools.register(makeTool({ name: 'profile_lab_run', description: 'Run an isolated DSH profile experiment.', parameters: schema, async execute(args) { return profile_lab_run(args); } })); ctx.tools.register(makeTool({ name: 'profile_lab_compare', description: 'Generate deterministic reports for an experiment.', parameters: schema, async execute(args) { return profile_lab_compare(args); } })); ctx.tools.register(makeTool({ name: 'profile_lab_gate', description: 'Evaluate a profile experiment policy gate.', parameters: schema, async execute() { return profile_lab_gate(); } })); };
 export default apply;

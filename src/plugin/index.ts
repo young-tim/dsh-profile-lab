@@ -1,6 +1,10 @@
+import { defineTool } from '@deepseek-ai/dsh-tools';
 import { loadExperiment } from '../config/index.js'; import { run } from '../runner/index.js'; import { report } from '../report/index.js'; import { readFile } from 'node:fs/promises'; import path from 'node:path';
 export const profile_lab_run=async(input:{experiment:string;output:string;driver:string})=>run(await loadExperiment(input.experiment),input.output,input.driver);
 export const profile_lab_compare=async(input:{experiment:string;output:string})=>report(input.output,await loadExperiment(input.experiment),JSON.parse(await readFile(path.join(input.output,'journal.json'),'utf8')));
 export const profile_lab_gate=async()=>{throw new Error('use CLI gate with an explicit policy');};
-export const apply=(ctx:{tool?:(name:string, fn:unknown)=>void})=>{ctx.tool?.('profile_lab_run',profile_lab_run);ctx.tool?.('profile_lab_compare',profile_lab_compare);ctx.tool?.('profile_lab_gate',profile_lab_gate);};
+export const name='dsh-profile-lab'; export const inject=['tools'];
+const schema={experiment:{type:'string',required:true},output:{type:'string',required:true},driver:{type:'string'}} as const;
+const makeTool=defineTool as unknown as (spec:unknown)=>unknown; const output={schema:{type:'object',additionalProperties:true},render:(_args:unknown,value:unknown)=>[{type:'text',text:JSON.stringify(value)}]};
+export const apply=(ctx:{tools:{register:(tool:unknown)=>void}})=>{ctx.tools.register(makeTool({name:'profile_lab_run',description:'Run an isolated DSH profile experiment.',parameters:schema,output,async execute(args:unknown){return profile_lab_run(args as {experiment:string;output:string;driver:string});}}));ctx.tools.register(makeTool({name:'profile_lab_compare',description:'Generate deterministic reports for an experiment.',parameters:schema,output,async execute(args:unknown){return profile_lab_compare(args as {experiment:string;output:string});}}));ctx.tools.register(makeTool({name:'profile_lab_gate',description:'Evaluate a profile experiment policy gate.',parameters:schema,output,async execute(){return profile_lab_gate();}}));};
 export default apply;

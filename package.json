@@ -39,6 +39,7 @@
     "test:package": "vitest run test/package.test.ts"
   },
   "dependencies": {
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.7",
     "yaml": "^2.8.2"
   },
   "devDependencies": {

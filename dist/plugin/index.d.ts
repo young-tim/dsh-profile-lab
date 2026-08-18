@@ -13,7 +13,11 @@ export declare const profile_lab_compare: (input: {
     cells: import("../types.js").Cell[];
 }>;
 export declare const profile_lab_gate: () => Promise<never>;
+export declare const name = "dsh-profile-lab";
+export declare const inject: string[];
 export declare const apply: (ctx: {
-    tool?: (name: string, fn: unknown) => void;
+    tools: {
+        register: (tool: unknown) => void;
+    };
 }) => void;
 export default apply;
