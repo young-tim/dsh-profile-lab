@@ -16,7 +16,23 @@ const put = async (file: string, text: string) => {
   await rename(`${file}.tmp`, file);
 };
 export const report = async (dir: string, e: Experiment, cells: Cell[]) => {
-  const variants = e.variants.map((v) => summarize(cells, v.id));
+  const variants = e.variants.map((v) => {
+    const summary = summarize(cells, v.id);
+    const price = e.pricing?.[v.id];
+    if (!price) return { ...summary, cost: "unavailable" as const };
+    const matching = cells.filter((cell) => cell.variant === v.id);
+    return {
+      ...summary,
+      cost: matching.reduce(
+        (total, cell) =>
+          total +
+          (cell.input_tokens * price.input_per_million +
+            cell.output_tokens * price.output_per_million) /
+            1_000_000,
+        0,
+      ),
+    };
+  });
   const baseline = e.baseline ?? e.variants[0]?.id ?? "";
   const per_case = e.variants.flatMap((v) =>
     [...new Set(cells.map((c) => c.case))]
@@ -31,12 +47,16 @@ export const report = async (dir: string, e: Experiment, cells: Cell[]) => {
       pass_rate_delta_pp: (v.pass_rate - base.pass_rate) * 100,
       median_token_delta_pct: pct(v.median_tokens, base.median_tokens),
     }));
-  const front = pareto(
-    variants,
-    (x) => x.pass_rate,
-    (x) => x.median_tokens,
-    (x) => x.median_duration_ms,
-  ).map((x) => x.variant);
+  const front = e.pricing
+    ? pareto(
+        variants.filter(
+          (x): x is typeof x & { cost: number } => typeof x.cost === "number",
+        ),
+        (x) => x.pass_rate,
+        (x) => x.cost,
+        (x) => x.median_duration_ms,
+      ).map((x) => x.variant)
+    : [];
   const data = {
     $schema: "schemas/report.schema.json",
     version: 1,

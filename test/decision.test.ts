@@ -92,6 +92,35 @@ describe("decision services", () => {
     expect(a[2]).toContain("&lt;unsafe&gt;");
   });
 });
+
+describe("explicit pricing decisions", () => {
+  it("does not fabricate cost or Pareto members without pricing", async () => {
+    const d = await mkdtemp(path.join(tmpdir(), "report-price-"));
+    const e = {
+      name: "pricing",
+      baseline: "base",
+      variants: [{ id: "base" }, { id: "candidate" }],
+    } as unknown as Experiment;
+    const result = await report(d, e, [cell("base"), cell("candidate")]);
+    expect(result.pareto).toEqual([]);
+    expect(result.variants.every((x) => x.cost === "unavailable")).toBe(true);
+  });
+  it("computes explicit local pricing and Pareto members", async () => {
+    const d = await mkdtemp(path.join(tmpdir(), "report-price-"));
+    const e = {
+      name: "pricing",
+      baseline: "base",
+      variants: [{ id: "base" }, { id: "candidate" }],
+      pricing: {
+        base: { input_per_million: 1_000_000, output_per_million: 0 },
+        candidate: { input_per_million: 1_000_000, output_per_million: 0 },
+      },
+    } as unknown as Experiment;
+    const result = await report(d, e, [cell("base"), cell("candidate")]);
+    expect(result.variants.map((x) => x.cost)).toEqual([1, 1]);
+    expect(result.pareto).toEqual(["base", "candidate"]);
+  });
+});
 describe("decision services", () => {
   it("projects tolerant session logs", async () => {
     const text =

@@ -16,7 +16,45 @@ export declare const profile_lab_compare: (input: {
         variants: string[];
         repetitions: number;
     };
-    variants: import("../types.js").Summary[];
+    variants: ({
+        cost: "unavailable";
+        variant: string;
+        case?: string;
+        total: number;
+        pass: number;
+        fail: number;
+        error: number;
+        pass_rate: number;
+        error_rate: number;
+        flaky: boolean;
+        repetition_label?: string;
+        median_duration_ms: number;
+        p95_duration_ms: number;
+        median_tokens: number;
+        p95_tokens: number;
+        median_steps: number;
+        p95_steps: number;
+        wilson: [number, number];
+    } | {
+        cost: number;
+        variant: string;
+        case?: string;
+        total: number;
+        pass: number;
+        fail: number;
+        error: number;
+        pass_rate: number;
+        error_rate: number;
+        flaky: boolean;
+        repetition_label?: string;
+        median_duration_ms: number;
+        p95_duration_ms: number;
+        median_tokens: number;
+        p95_tokens: number;
+        median_steps: number;
+        p95_steps: number;
+        wilson: [number, number];
+    })[];
     per_case: import("../types.js").Summary[];
     comparisons: {
         variant: string;

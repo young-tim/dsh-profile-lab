@@ -7,6 +7,7 @@ Environment: Node v24.12.0, pnpm 11.9.0, `@deepseek-ai/dsh` 0.1.0-rc.7. The froz
 - P0 CLI/config: strict command parsing, schema validation and experiment-relative case loading are exercised by `test/mvp-contracts.test.ts` and CLI tests.
 - P0 execution: `examples/experiment.yml` creates 2 variants × 2 cases × 5 repetitions; fake driver invocation returned exactly 20 journal/report cells.
 - P0 event/assertion: official `{type,seq,time,data}` message/end fixtures and structural assertion pass/fail paths are covered by 24 contract tests.
+- P0 event/assertion addition: `test/zstd.test.ts` proves JSONL and zstd fixtures project identical metrics; corrupt zstd projects an error. `test/assertions.test.ts` covers tool argument/result assertions and judge short-circuiting.
 - P0 runner/safety: isolated copied workspaces, symlink rejection, bounded concurrency and journal resume are covered by integration tests.
 - P0 reports/gate/tools: deterministic report render, policy 0/1 behavior and three registered DSH tools are covered by decision/package/plugin tests.
 
