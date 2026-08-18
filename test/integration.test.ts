@@ -88,4 +88,24 @@ describe("matrix runner", () => {
       delete process.env.FAKE_DSH_LOG;
     }
   });
+  it("times out the slow driver and retains incomplete cell evidence", async () => {
+    const out = await mkdtemp(path.join(tmpdir(), "lab-timeout-"));
+    const e = await loadExperiment("examples/experiment.yml");
+    const started = Date.now();
+    const result = await run(
+      {
+        ...e,
+        repetitions: 1,
+        run: { ...e.run, concurrency: 1, max_runs: 4, timeout_ms: 20 },
+      },
+      out,
+      path.resolve("fixtures/fake-slow"),
+    );
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(result).toHaveLength(4);
+    expect(result.every((cell) => cell.status === "error")).toBe(true);
+    expect(result.every((cell) => cell.evidence.startsWith(".runs/"))).toBe(
+      true,
+    );
+  });
 });

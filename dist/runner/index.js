@@ -46,8 +46,15 @@ const invoke = (driver, args, env, timeout) => new Promise((resolve, reject) => 
     let timedOut = false;
     const timer = setTimeout(() => {
         timedOut = true;
-        if (child.pid)
-            process.kill(-child.pid, "SIGTERM");
+        if (!child.pid)
+            return;
+        try {
+            process.kill(process.platform === "win32" ? child.pid : -child.pid, "SIGTERM");
+        }
+        catch (error) {
+            if (error.code !== "ESRCH")
+                throw error;
+        }
     }, timeout);
     child.stdout.on("data", (data) => {
         text += data;
@@ -154,8 +161,10 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
                     result = projectCell(item, events, path.relative(base, root));
                     result.duration_ms ||= Date.now() - started;
                     result.attempts = attempt;
-                    if (output.timedOut)
+                    if (output.timedOut) {
                         result.status = "error";
+                        result.turn_reason = "timeout";
+                    }
                     const verdict = evaluateCase(item.source, events);
                     if (!verdict.ok && result.status === "pass") {
                         result.status = "fail";

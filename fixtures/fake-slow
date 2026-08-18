@@ -1,0 +1,9 @@
+#!/usr/bin/env node
+setTimeout(() => {
+  process.stdout.write(
+    JSON.stringify({
+      type: "turn/end",
+      data: { reason: { kind: "completed" } },
+    }) + "\n",
+  );
+}, 5_000);
