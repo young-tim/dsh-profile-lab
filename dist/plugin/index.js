@@ -19,7 +19,8 @@ export const profile_lab_gate = async (input) => {
     if (!base || !candidate)
         throw new Error("E_CONFIG: baseline missing");
     const { gate } = await import("../gate/index.js");
-    return { reasons: gate(base, candidate, input.policy) };
+    const reasons = gate(base, candidate, input.policy);
+    return { verdict: reasons.length ? "regression" : "pass", reasons };
 };
 export const name = "dsh-profile-lab";
 export const inject = ["tools"];

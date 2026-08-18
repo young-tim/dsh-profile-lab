@@ -69,6 +69,7 @@ export declare const profile_lab_gate: (input?: {
     output: string;
     policy?: Record<string, unknown>;
 }) => Promise<{
+    verdict: string;
     reasons: string[];
 }>;
 export declare const name = "dsh-profile-lab";

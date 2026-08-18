@@ -27,5 +27,12 @@ describe("package surface", () =>
     await expect(
       tools[2]!.execute({ experiment: "examples/experiment.yml", output: out }),
     ).rejects.toThrow("explicit policy");
+    await expect(
+      tools[2]!.execute({
+        experiment: "examples/experiment.yml",
+        output: out,
+        policy: { min_candidate_pass_rate: 0 },
+      }),
+    ).resolves.toMatchObject({ verdict: "pass", reasons: [] });
     await expect(profile_lab_gate()).rejects.toThrow("explicit policy");
   }));
