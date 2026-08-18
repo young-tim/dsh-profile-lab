@@ -7,7 +7,9 @@ export const cells = (e) => e.variants.flatMap(v => Array.from({ length: e.repet
 export const run = async (e, base, driver) => { await mkdir(base, { recursive: true }); const jf = path.join(base, 'journal.json'); let done = []; try {
     done = JSON.parse(await readFile(jf, 'utf8'));
 }
-catch { } for (const p of cells(e)) {
+catch {
+    done = [];
+} for (const p of cells(e)) {
     if (done.some(x => x.id === p.id))
         continue;
     const ws = path.join(base, '.runs', p.id, 'workspace');

@@ -1,0 +1,8 @@
+id: dsh-profile-lab
+bundle:
+  patch:
+    - op: add
+      path: /plugins/dsh-profile-lab
+      value:
+        package: dsh-profile-lab
+        tools: [profile_lab_run, profile_lab_compare, profile_lab_gate]

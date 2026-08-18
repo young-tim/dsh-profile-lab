@@ -1,0 +1,2 @@
+import { describe, expect, it } from 'vitest'; import { readFile } from 'node:fs/promises'; import { apply } from '../src/plugin/index.js';
+describe('package surface',()=>it('ships one bundle row and three tools',async()=>{const patch=await readFile('cordis.patch.yml','utf8');expect(patch).toContain('dsh-profile-lab');const names:string[]=[];apply({tool:(n)=>names.push(n)});expect(names).toEqual(['profile_lab_run','profile_lab_compare','profile_lab_gate']);}));

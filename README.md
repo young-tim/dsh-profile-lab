@@ -20,4 +20,19 @@ hosted service, and public leaderboard are intentionally outside the MVP.
 ## Status
 
 Specification complete; implementation not started.
+# DSH Profile Lab
 
+Run repeatable, isolated comparisons of DSH profile compositions. The lab never
+executes inside the declared source workspace; each matrix cell receives a copy.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+node dist/cli.js run examples/experiment.yml --driver fixtures/fake-dsh --output .profile-lab/run
+node dist/cli.js compare .profile-lab/run
+node dist/cli.js gate .profile-lab/run --policy examples/policy.yml
+```
+
+中文：DSH Profile Lab 用隔离的可重复实验比较 profile 组合。每个 cell
+都会复制工作区，结果来自 session event，而不是 UI 文本。使用 `schema`、
+`run`、`compare`、`gate` 命令；参见 `examples/`。
