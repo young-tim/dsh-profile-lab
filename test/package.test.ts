@@ -29,7 +29,7 @@ describe("package surface", () =>
     ).resolves.toMatchObject({ version: 1 });
     await expect(
       tools[2]!.execute({ experiment: "examples/experiment.yml", output: out }),
-    ).rejects.toThrow("explicit policy");
+    ).rejects.toThrow('missing required property "policy"');
     await expect(
       tools[2]!.execute({
         experiment: "examples/experiment.yml",

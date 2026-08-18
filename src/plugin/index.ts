@@ -1,4 +1,4 @@
-import { defineTool } from "@deepseek-ai/dsh-tools";
+import { defineTool, type JsonValue } from "@deepseek-ai/dsh-tools";
 import { loadExperiment } from "../config/index.js";
 import { run } from "../runner/index.js";
 import { report } from "../report/index.js";
@@ -40,62 +40,64 @@ export const profile_lab_gate = async (input?: {
 };
 export const name = "dsh-profile-lab";
 export const inject = ["tools"];
-const schema = {
+const baseSchema = {
   experiment: { type: "string", required: true },
   output: { type: "string", required: true },
-  driver: { type: "string" },
-  policy: { type: "object", additionalProperties: true },
 } as const;
-const makeTool = defineTool as unknown as (spec: unknown) => unknown;
 const output = {
-  schema: { type: "object", additionalProperties: true },
-  render: (_args: unknown, value: unknown) => [
-    { type: "text", text: JSON.stringify(value) },
+  schema: { type: "json" as const },
+  render: (_args: unknown, value: JsonValue) => [
+    { type: "text" as const, text: JSON.stringify(value) },
   ],
 };
 export const apply = (ctx: {
   tools: { register: (tool: unknown) => void };
 }) => {
   ctx.tools.register(
-    makeTool({
+    defineTool({
       name: "profile_lab_run",
       description: "Run an isolated DSH profile experiment.",
-      parameters: schema,
+      parameters: {
+        ...baseSchema,
+        driver: { type: "string" as const, required: true },
+      },
       output,
-      async execute(args: unknown) {
-        return profile_lab_run(
-          args as { experiment: string; output: string; driver: string },
-        );
+      async execute(args) {
+        return profile_lab_run(args);
       },
     }),
   );
   ctx.tools.register(
-    makeTool({
+    defineTool({
       name: "profile_lab_compare",
       description: "Generate deterministic reports for an experiment.",
-      parameters: schema,
+      parameters: baseSchema,
       output,
-      async execute(args: unknown) {
-        return profile_lab_compare(
-          args as { experiment: string; output: string },
-        );
+      async execute(args) {
+        return profile_lab_compare(args);
       },
     }),
   );
   ctx.tools.register(
-    makeTool({
+    defineTool({
       name: "profile_lab_gate",
       description: "Evaluate a profile experiment policy gate.",
-      parameters: schema,
+      parameters: {
+        ...baseSchema,
+        policy: { type: "json" as const, required: true },
+      },
       output,
-      async execute(args: unknown) {
-        return profile_lab_gate(
-          args as {
-            experiment: string;
-            output: string;
-            policy?: Record<string, unknown>;
-          },
-        );
+      async execute(args) {
+        if (
+          !args.policy ||
+          typeof args.policy !== "object" ||
+          Array.isArray(args.policy)
+        )
+          throw new Error("E_CONFIG: policy must be an object");
+        return profile_lab_gate({
+          ...args,
+          policy: args.policy as Record<string, unknown>,
+        });
       },
     }),
   );

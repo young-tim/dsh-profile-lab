@@ -24,45 +24,55 @@ export const profile_lab_gate = async (input) => {
 };
 export const name = "dsh-profile-lab";
 export const inject = ["tools"];
-const schema = {
+const baseSchema = {
     experiment: { type: "string", required: true },
     output: { type: "string", required: true },
-    driver: { type: "string" },
-    policy: { type: "object", additionalProperties: true },
 };
-const makeTool = defineTool;
 const output = {
-    schema: { type: "object", additionalProperties: true },
+    schema: { type: "json" },
     render: (_args, value) => [
         { type: "text", text: JSON.stringify(value) },
     ],
 };
 export const apply = (ctx) => {
-    ctx.tools.register(makeTool({
+    ctx.tools.register(defineTool({
         name: "profile_lab_run",
         description: "Run an isolated DSH profile experiment.",
-        parameters: schema,
+        parameters: {
+            ...baseSchema,
+            driver: { type: "string", required: true },
+        },
         output,
         async execute(args) {
             return profile_lab_run(args);
         },
     }));
-    ctx.tools.register(makeTool({
+    ctx.tools.register(defineTool({
         name: "profile_lab_compare",
         description: "Generate deterministic reports for an experiment.",
-        parameters: schema,
+        parameters: baseSchema,
         output,
         async execute(args) {
             return profile_lab_compare(args);
         },
     }));
-    ctx.tools.register(makeTool({
+    ctx.tools.register(defineTool({
         name: "profile_lab_gate",
         description: "Evaluate a profile experiment policy gate.",
-        parameters: schema,
+        parameters: {
+            ...baseSchema,
+            policy: { type: "json", required: true },
+        },
         output,
         async execute(args) {
-            return profile_lab_gate(args);
+            if (!args.policy ||
+                typeof args.policy !== "object" ||
+                Array.isArray(args.policy))
+                throw new Error("E_CONFIG: policy must be an object");
+            return profile_lab_gate({
+                ...args,
+                policy: args.policy,
+            });
         },
     }));
 };
