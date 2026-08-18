@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mkdtemp, readFile, symlink } from "node:fs/promises";
+import { mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { loadExperiment } from "../src/config/index.js";
@@ -58,5 +58,34 @@ describe("matrix runner", () => {
       incomplete: true,
       reason: "budget",
     });
+  });
+  it("passes profile, patch, workspace, session and prompt argv to every cell", async () => {
+    const out = await mkdtemp(path.join(tmpdir(), "lab-argv-"));
+    const log = path.join(out, "driver.jsonl");
+    await writeFile(log, "");
+    process.env.FAKE_DSH_LOG = log;
+    try {
+      const e = await loadExperiment("examples/experiment.yml");
+      await run(
+        { ...e, run: { ...e.run, env_allowlist: ["FAKE_DSH_LOG"] } },
+        out,
+        path.resolve("fixtures/fake-dsh"),
+      );
+      const calls = (await readFile(log, "utf8"))
+        .trim()
+        .split("\n")
+        .map(JSON.parse) as string[][];
+      expect(calls).toHaveLength(20);
+      for (const argv of calls) {
+        expect(argv).toContain("--profile");
+        expect(argv).toContain("headless");
+        expect(argv).toContain("--patch");
+        expect(argv).toContain("--workspace");
+        expect(argv).toContain("--session-root");
+        expect(argv).toContain("--prompt");
+      }
+    } finally {
+      delete process.env.FAKE_DSH_LOG;
+    }
   });
 });
