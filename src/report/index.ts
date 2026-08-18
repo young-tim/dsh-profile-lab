@@ -98,7 +98,14 @@ export const report = async (dir: string, e: Experiment, cells: Cell[]) => {
     path.join(dir, "report.json"),
     JSON.stringify(data, null, 2) + "\n",
   );
-  const md = `# ${e.name}\n\nBaseline: ${baseline}\n\n| Variant | Pass rate | Median tokens |\n|---|---:|---:|\n${variants.map((v) => `| ${v.variant} | ${v.pass_rate} | ${v.median_tokens} |`).join("\n")}\n\n## Per case\n\n${per_case.map((v) => `- ${v.variant}/${v.case ?? ""}: ${v.pass}/${v.total} pass`).join("\n")}\n`;
+  const failed = cells
+    .filter((cell) => cell.status !== "pass")
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map(
+      (cell) =>
+        `- ${cell.variant}/${cell.case}/${cell.repetition}: ${cell.status}${cell.assertion_failures?.length ? ` (${cell.assertion_failures.join(", ")})` : ""}`,
+    );
+  const md = `# ${e.name}\n\nBaseline: ${baseline}\n\n| Variant | Pass rate | Median tokens | Cost |\n|---|---:|---:|---:|\n${variants.map((v) => `| ${v.variant} | ${v.pass_rate} | ${v.median_tokens} | ${v.cost} |`).join("\n")}\n\n## Per case\n\n${per_case.map((v) => `- ${v.variant}/${v.case ?? ""}: ${v.pass}/${v.total} pass`).join("\n")}\n\n## Failures\n\n${failed.length ? failed.join("\n") : "None"}\n\n## Reproduce\n\n\`dsh-profile-lab run <experiment.yml> --driver <dsh> --output ${dir}\`\n`;
   await put(path.join(dir, "report.md"), md);
   await put(
     path.join(dir, "report.html"),

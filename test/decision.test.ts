@@ -90,6 +90,7 @@ describe("decision services", () => {
     await report(d, e, [cell("base"), cell("candidate")]);
     expect(await readFile(path.join(d, "report.html"), "utf8")).toBe(a[2]);
     expect(a[2]).toContain("&lt;unsafe&gt;");
+    expect(a[1]).toContain("## Reproduce");
   });
 });
 
