@@ -14,5 +14,26 @@ candidate pass rate below minimum; pass rate drop exceeds policy
 
 The last command deliberately exits 1. Full specification acceptance remains pending.
 
-Coverage currently fails (75.79% statements, 65.4% branches, 84.05%
-functions); the required thresholds have not been claimed as passed.
+Latest local verification (2026-08-18) additionally passed `lint`, `typecheck`,
+unit tests (5 files / 19 tests), build, integration tests (2 tests), package
+test, and `pnpm pack`. The event-based smoke output was:
+
+```text
+schema valid
+run complete
+reports written
+candidate pass rate below minimum; pass rate drop exceeds policy
+```
+
+The final line is the deliberate regression and has exit code 1.
+
+Coverage gate passes after session-event and CLI contract tests:
+
+```text
+Statements   : 91.89%
+Branches     : 85.02%
+Functions    : 91.54%
+Lines        : 100%
+Test files   : 5 passed
+Tests        : 19 passed
+```
