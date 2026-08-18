@@ -27,11 +27,11 @@
       "required": ["variants", "repetitions"],
       "properties": {
         "variants": { "type": "array", "items": { "type": "string" } },
-        "repetitions": { "type": "integer" }
+        "repetitions": { "type": "integer", "minimum": 1 }
       }
     },
-    "variants": { "type": "array", "items": { "type": "object" } },
-    "per_case": { "type": "array", "items": { "type": "object" } },
+    "variants": { "type": "array", "items": { "$ref": "#/$defs/summary" } },
+    "per_case": { "type": "array", "items": { "$ref": "#/$defs/summary" } },
     "comparisons": {
       "type": "array",
       "items": {
@@ -46,6 +46,101 @@
       }
     },
     "pareto": { "type": "array", "items": { "type": "string" } },
-    "cells": { "type": "array", "items": { "type": "object" } }
+    "cells": { "type": "array", "items": { "$ref": "#/$defs/cell" } }
+  },
+  "$defs": {
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "variant",
+        "total",
+        "pass",
+        "fail",
+        "error",
+        "pass_rate",
+        "error_rate",
+        "flaky",
+        "median_duration_ms",
+        "p95_duration_ms",
+        "median_tokens",
+        "p95_tokens",
+        "median_steps",
+        "p95_steps",
+        "wilson",
+        "cost"
+      ],
+      "properties": {
+        "variant": { "type": "string" },
+        "case": { "type": "string" },
+        "total": { "type": "integer", "minimum": 0 },
+        "pass": { "type": "integer", "minimum": 0 },
+        "fail": { "type": "integer", "minimum": 0 },
+        "error": { "type": "integer", "minimum": 0 },
+        "pass_rate": { "type": "number" },
+        "error_rate": { "type": "number" },
+        "flaky": { "type": "boolean" },
+        "repetition_label": { "const": "insufficient-repetitions" },
+        "median_duration_ms": { "type": "number" },
+        "p95_duration_ms": { "type": "number" },
+        "median_tokens": { "type": "number" },
+        "p95_tokens": { "type": "number" },
+        "median_steps": { "type": "number" },
+        "p95_steps": { "type": "number" },
+        "wilson": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "number" }
+        },
+        "cost": { "oneOf": [{ "type": "number" }, { "const": "unavailable" }] }
+      }
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "variant",
+        "case",
+        "repetition",
+        "status",
+        "attempts",
+        "duration_ms",
+        "steps",
+        "tool_calls",
+        "tool_errors",
+        "input_tokens",
+        "output_tokens",
+        "reasoning_tokens",
+        "cache_tokens",
+        "final_output_hash",
+        "evidence"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "variant": { "type": "string" },
+        "case": { "type": "string" },
+        "repetition": { "type": "integer", "minimum": 1 },
+        "status": { "enum": ["pass", "fail", "error", "cancelled"] },
+        "attempts": { "type": "integer", "minimum": 1 },
+        "duration_ms": { "type": "number", "minimum": 0 },
+        "steps": { "type": "number", "minimum": 0 },
+        "tool_calls": { "type": "number", "minimum": 0 },
+        "tool_errors": { "type": "number", "minimum": 0 },
+        "input_tokens": { "type": "number", "minimum": 0 },
+        "output_tokens": { "type": "number", "minimum": 0 },
+        "reasoning_tokens": { "type": "number", "minimum": 0 },
+        "cache_tokens": { "type": "number", "minimum": 0 },
+        "final_output_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "evidence": { "type": "string" },
+        "assertion_failures": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "turn_reason": { "type": "string" },
+        "cost": { "type": "number" }
+      }
+    }
   }
 }

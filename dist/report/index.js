@@ -40,9 +40,10 @@ export const report = async (dir, e, cells) => {
         };
     });
     const baseline = e.baseline ?? e.variants[0]?.id ?? "";
-    const per_case = e.variants.flatMap((v) => [...new Set(cells.map((c) => c.case))]
-        .sort()
-        .map((c) => summarize(cells, v.id, c)));
+    const per_case = e.variants.flatMap((v) => [...new Set(cells.map((c) => c.case))].sort().map((c) => ({
+        ...summarize(cells, v.id, c),
+        cost: "unavailable",
+    })));
     const base = variants.find((v) => v.variant === baseline) ?? variants[0];
     const comparisons = variants
         .filter((v) => v.variant !== baseline)

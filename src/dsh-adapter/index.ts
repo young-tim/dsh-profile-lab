@@ -113,6 +113,12 @@ export const projectCell = (
   events: SessionEvent[],
   evidence: string,
 ): Cell => {
+  const identity = {
+    id: id.id,
+    variant: id.variant,
+    case: id.case,
+    repetition: id.repetition,
+  };
   const end = events.findLast((x) => x.type === "turn/end");
   const endData = end ? data(end) : {};
   const reason =
@@ -146,7 +152,7 @@ export const projectCell = (
           ? "fail"
           : "error";
   return {
-    ...id,
+    ...identity,
     status,
     attempts: 1,
     duration_ms: Number(endData.duration_ms ?? end?.duration_ms ?? 0),
