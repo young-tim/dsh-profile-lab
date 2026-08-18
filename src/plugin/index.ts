@@ -1,6 +1,6 @@
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { loadExperiment } from '../config/index.js'; import { run } from '../runner/index.js'; import { report } from '../report/index.js'; import { readFile } from 'node:fs/promises'; import path from 'node:path';
-export const profile_lab_run=async(input:{experiment:string;output:string;driver:string})=>run(await loadExperiment(input.experiment),input.output,input.driver);
+export const profile_lab_run=async(input:{experiment:string;output:string;driver:string})=>{const experiment=await loadExperiment(input.experiment);experiment.workspace_template=path.resolve(experiment.workspace_template);return run(experiment,input.output,input.driver);};
 export const profile_lab_compare=async(input:{experiment:string;output:string})=>report(input.output,await loadExperiment(input.experiment),JSON.parse(await readFile(path.join(input.output,'journal.json'),'utf8')));
 export const profile_lab_gate=async()=>{throw new Error('use CLI gate with an explicit policy');};
 export const name='dsh-profile-lab'; export const inject=['tools'];
