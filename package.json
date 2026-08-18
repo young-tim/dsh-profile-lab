@@ -10,6 +10,11 @@
   "bin": {
     "dsh-profile-lab": "./dist/cli.js"
   },
+  "dsh": {
+    "bundle": {
+      "patch": "cordis.patch.yml"
+    }
+  },
   "exports": {
     ".": "./dist/index.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
@@ -37,6 +42,7 @@
     "yaml": "^2.8.2"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh": "0.1.0-rc.7",
     "@eslint/js": "^9.39.1",
     "@types/node": "^24.10.1",
     "@vitest/coverage-v8": "^4.0.14",

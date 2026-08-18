@@ -27,6 +27,20 @@ candidate pass rate below minimum; pass rate drop exceeds policy
 
 The final line is the deliberate regression and has exit code 1.
 
+Temporary-profile package smoke (with `DSH_HOME` set to a fresh `mktemp -d`
+directory) installed the tarball and produced:
+
+```text
+334:# == dsh-profile-lab
+335:- id: dsh-profile-lab
+336:  name: dsh-profile-lab
+```
+
+This proves the official DSH RC loader accepts the bundle patch. The three
+tool registrations are covered by the local package contract test, but are not
+yet observable in `--dump-config` and therefore are not claimed as a DSH dump
+assertion.
+
 Coverage gate passes after session-event and CLI contract tests:
 
 ```text

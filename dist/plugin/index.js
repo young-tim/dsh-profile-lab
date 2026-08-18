@@ -7,3 +7,4 @@ export const profile_lab_run = async (input) => run(await loadExperiment(input.e
 export const profile_lab_compare = async (input) => report(input.output, await loadExperiment(input.experiment), JSON.parse(await readFile(path.join(input.output, 'journal.json'), 'utf8')));
 export const profile_lab_gate = async () => { throw new Error('use CLI gate with an explicit policy'); };
 export const apply = (ctx) => { ctx.tool?.('profile_lab_run', profile_lab_run); ctx.tool?.('profile_lab_compare', profile_lab_compare); ctx.tool?.('profile_lab_gate', profile_lab_gate); };
+export default apply;

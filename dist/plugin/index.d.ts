@@ -16,3 +16,4 @@ export declare const profile_lab_gate: () => Promise<never>;
 export declare const apply: (ctx: {
     tool?: (name: string, fn: unknown) => void;
 }) => void;
+export default apply;
