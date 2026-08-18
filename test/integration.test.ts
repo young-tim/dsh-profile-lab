@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, stat, symlink, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -145,7 +145,17 @@ describe("matrix runner", () => {
       ],
       { cwd: process.cwd(), stdio: "ignore" },
     );
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    let started = false;
+    for (let attempt = 0; attempt < 40; attempt++) {
+      try {
+        await stat(path.join(out, ".runs"));
+        started = true;
+        break;
+      } catch {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+    }
+    expect(started).toBe(true);
     child.kill("SIGINT");
     const code = await new Promise<number | null>((resolve) =>
       child.once("close", resolve),
