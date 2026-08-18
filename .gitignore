@@ -1,0 +1,8 @@
+node_modules/
+lib/
+coverage/
+.profile-lab/
+reports/
+*.tgz
+.DS_Store
+
