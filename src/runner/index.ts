@@ -21,6 +21,17 @@ const atomic = async (file: string, value: unknown) => {
   await rename(temp, file);
 };
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
+const terminate = (child: ReturnType<typeof spawn>) => {
+  if (!child.pid) return;
+  try {
+    process.kill(
+      process.platform === "win32" ? child.pid : -child.pid,
+      "SIGTERM",
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+  }
+};
 const safeTree = async (root: string): Promise<void> => {
   const st = await lstat(root);
   if (st.isSymbolicLink() || (!st.isDirectory() && !st.isFile()))
@@ -36,7 +47,11 @@ export type Plan = {
   repetition: number;
   source: Case;
 };
-type RunState = { version: 1; incomplete: boolean; reason?: "budget" };
+type RunState = {
+  version: 1;
+  incomplete: boolean;
+  reason?: "budget" | "cancelled";
+};
 export const readRunState = async (base: string): Promise<RunState> => {
   try {
     return JSON.parse(
@@ -68,6 +83,7 @@ const invoke = (
   args: string[],
   env: NodeJS.ProcessEnv,
   timeout: number,
+  signal?: AbortSignal,
 ) =>
   new Promise<{ text: string; timedOut: boolean }>((resolve, reject) => {
     const child = spawn(driver, args, {
@@ -79,22 +95,20 @@ const invoke = (
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
-      if (!child.pid) return;
-      try {
-        process.kill(
-          process.platform === "win32" ? child.pid : -child.pid,
-          "SIGTERM",
-        );
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
-      }
+      terminate(child);
     }, timeout);
+    const abort = () => {
+      timedOut = true;
+      terminate(child);
+    };
+    signal?.addEventListener("abort", abort, { once: true });
     child.stdout.on("data", (data) => {
       text += data;
     });
     child.on("error", reject);
     child.on("close", (code) => {
       clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
       if (timedOut) resolve({ text, timedOut });
       else if (code === 0) resolve({ text, timedOut });
       else reject(new Error(`E_RUN: driver exit ${code}`));
@@ -107,6 +121,7 @@ export const run = async (
   experimentFile = "examples/experiment.yml",
   filters?: { tags?: string[]; names?: string[] },
   restart = false,
+  signal?: AbortSignal,
 ): Promise<Cell[]> => {
   if (path.isAbsolute(base) && !base)
     throw new Error("E_SAFETY: invalid output");
@@ -165,11 +180,18 @@ export const run = async (
   );
   let writes = Promise.resolve();
   let budgetStopped = false;
+  let incompleteReason: RunState["reason"];
   const worker = async () => {
     while (next < todo.length) {
+      if (signal?.aborted) {
+        budgetStopped = true;
+        incompleteReason = "cancelled";
+        return;
+      }
       const item = todo[next++]!;
       if (totalTokens >= e.run.max_total_tokens) {
         budgetStopped = true;
+        incompleteReason = "budget";
         return;
       }
       const variant = e.variants.find((v) => v.id === item.variant)!;
@@ -202,7 +224,13 @@ export const run = async (
           if (process.env[name] !== undefined) env[name] = process.env[name];
         const started = Date.now();
         try {
-          const output = await invoke(driver, args, env, e.run.timeout_ms);
+          const output = await invoke(
+            driver,
+            args,
+            env,
+            e.run.timeout_ms,
+            signal,
+          );
           const events = parseJsonl(output.text);
           result = projectCell(item, events, path.relative(base, root));
           result.duration_ms ||= Date.now() - started;
@@ -241,7 +269,7 @@ export const run = async (
   await atomic(stateFile, {
     version: 1,
     incomplete: budgetStopped,
-    ...(budgetStopped ? { reason: "budget" } : {}),
+    ...(incompleteReason ? { reason: incompleteReason } : {}),
   } satisfies RunState);
   if (done.length && done.every((c) => c.turn_reason === "missing"))
     throw new Error("E_RUN: driver produced no turn/end event");

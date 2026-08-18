@@ -63,10 +63,19 @@ export const main = async (argv = process.argv.slice(2)) => {
         if (!experiment || !driver)
             usage("run requires EXPERIMENT and --driver DRIVER");
         const e = await loadExperiment(experiment);
-        const done = await run(e, output, driver, experiment, {
-            tags: options.get("--tag")?.split(","),
-            names: options.get("--case")?.split(","),
-        }, options.has("--restart"));
+        const controller = new AbortController();
+        const cancel = () => controller.abort();
+        process.once("SIGINT", cancel);
+        let done;
+        try {
+            done = await run(e, output, driver, experiment, {
+                tags: options.get("--tag")?.split(","),
+                names: options.get("--case")?.split(","),
+            }, options.has("--restart"), controller.signal);
+        }
+        finally {
+            process.removeListener("SIGINT", cancel);
+        }
         console.log(`run complete: ${done.length} cells`);
         return (await readRunState(output)).incomplete ||
             done.some((c) => c.status === "error" || c.status === "cancelled")

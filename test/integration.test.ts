@@ -108,4 +108,24 @@ describe("matrix runner", () => {
       true,
     );
   });
+  it("stops dispatching when the runner cancellation signal aborts", async () => {
+    const out = await mkdtemp(path.join(tmpdir(), "lab-cancel-"));
+    const e = await loadExperiment("examples/experiment.yml");
+    const controller = new AbortController();
+    controller.abort();
+    const result = await run(
+      e,
+      out,
+      path.resolve("fixtures/fake-dsh"),
+      "examples/experiment.yml",
+      undefined,
+      false,
+      controller.signal,
+    );
+    expect(result).toEqual([]);
+    await expect(readRunState(out)).resolves.toMatchObject({
+      incomplete: true,
+      reason: "cancelled",
+    });
+  });
 });

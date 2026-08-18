@@ -9,7 +9,7 @@ export type Plan = {
 type RunState = {
     version: 1;
     incomplete: boolean;
-    reason?: "budget";
+    reason?: "budget" | "cancelled";
 };
 export declare const readRunState: (base: string) => Promise<RunState>;
 export declare const cells: (e: Experiment, cases?: Case[]) => {
@@ -22,5 +22,5 @@ export declare const cells: (e: Experiment, cases?: Case[]) => {
 export declare const run: (e: Experiment, base: string, driver: string, experimentFile?: string, filters?: {
     tags?: string[];
     names?: string[];
-}, restart?: boolean) => Promise<Cell[]>;
+}, restart?: boolean, signal?: AbortSignal) => Promise<Cell[]>;
 export {};

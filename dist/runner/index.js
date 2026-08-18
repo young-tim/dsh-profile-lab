@@ -11,6 +11,17 @@ const atomic = async (file, value) => {
     await rename(temp, file);
 };
 const sha = (value) => createHash("sha256").update(value).digest("hex");
+const terminate = (child) => {
+    if (!child.pid)
+        return;
+    try {
+        process.kill(process.platform === "win32" ? child.pid : -child.pid, "SIGTERM");
+    }
+    catch (error) {
+        if (error.code !== "ESRCH")
+            throw error;
+    }
+};
 const safeTree = async (root) => {
     const st = await lstat(root);
     if (st.isSymbolicLink() || (!st.isDirectory() && !st.isFile()))
@@ -36,7 +47,7 @@ export const cells = (e, cases = [{ name: "default", prompt: "" }]) => e.variant
     repetition: i + 1,
     source: c,
 }))));
-const invoke = (driver, args, env, timeout) => new Promise((resolve, reject) => {
+const invoke = (driver, args, env, timeout, signal) => new Promise((resolve, reject) => {
     const child = spawn(driver, args, {
         shell: false,
         detached: process.platform !== "win32",
@@ -46,22 +57,20 @@ const invoke = (driver, args, env, timeout) => new Promise((resolve, reject) => 
     let timedOut = false;
     const timer = setTimeout(() => {
         timedOut = true;
-        if (!child.pid)
-            return;
-        try {
-            process.kill(process.platform === "win32" ? child.pid : -child.pid, "SIGTERM");
-        }
-        catch (error) {
-            if (error.code !== "ESRCH")
-                throw error;
-        }
+        terminate(child);
     }, timeout);
+    const abort = () => {
+        timedOut = true;
+        terminate(child);
+    };
+    signal?.addEventListener("abort", abort, { once: true });
     child.stdout.on("data", (data) => {
         text += data;
     });
     child.on("error", reject);
     child.on("close", (code) => {
         clearTimeout(timer);
+        signal?.removeEventListener("abort", abort);
         if (timedOut)
             resolve({ text, timedOut });
         else if (code === 0)
@@ -70,7 +79,7 @@ const invoke = (driver, args, env, timeout) => new Promise((resolve, reject) => 
             reject(new Error(`E_RUN: driver exit ${code}`));
     });
 });
-export const run = async (e, base, driver, experimentFile = "examples/experiment.yml", filters, restart = false) => {
+export const run = async (e, base, driver, experimentFile = "examples/experiment.yml", filters, restart = false, signal) => {
     if (path.isAbsolute(base) && !base)
         throw new Error("E_SAFETY: invalid output");
     await mkdir(base, { recursive: true });
@@ -118,11 +127,18 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
     let totalTokens = done.reduce((n, c) => n + c.input_tokens + c.output_tokens + c.reasoning_tokens, 0);
     let writes = Promise.resolve();
     let budgetStopped = false;
+    let incompleteReason;
     const worker = async () => {
         while (next < todo.length) {
+            if (signal?.aborted) {
+                budgetStopped = true;
+                incompleteReason = "cancelled";
+                return;
+            }
             const item = todo[next++];
             if (totalTokens >= e.run.max_total_tokens) {
                 budgetStopped = true;
+                incompleteReason = "budget";
                 return;
             }
             const variant = e.variants.find((v) => v.id === item.variant);
@@ -156,7 +172,7 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
                         env[name] = process.env[name];
                 const started = Date.now();
                 try {
-                    const output = await invoke(driver, args, env, e.run.timeout_ms);
+                    const output = await invoke(driver, args, env, e.run.timeout_ms, signal);
                     const events = parseJsonl(output.text);
                     result = projectCell(item, events, path.relative(base, root));
                     result.duration_ms ||= Date.now() - started;
@@ -197,7 +213,7 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
     await atomic(stateFile, {
         version: 1,
         incomplete: budgetStopped,
-        ...(budgetStopped ? { reason: "budget" } : {}),
+        ...(incompleteReason ? { reason: incompleteReason } : {}),
     });
     if (done.length && done.every((c) => c.turn_reason === "missing"))
         throw new Error("E_RUN: driver produced no turn/end event");
