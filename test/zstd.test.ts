@@ -52,10 +52,11 @@ describe("zstd official event fixtures", () => {
       readSession(compressed),
     ]);
     const id = { id: "cell", variant: "v", case: "c", repetition: 1 };
-    const comparable = ({
-      evidence: _evidence,
-      ...cell
-    }: ReturnType<typeof projectCell>) => cell;
+    const comparable = (cell: ReturnType<typeof projectCell>) => {
+      const copy = { ...cell };
+      delete copy.evidence;
+      return copy;
+    };
     expect(comparable(projectCell(id, b, "zst"))).toEqual(
       comparable(projectCell(id, a, "jsonl")),
     );
