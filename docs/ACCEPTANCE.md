@@ -34,4 +34,6 @@ pnpm exec dsh-profile-lab compare .profile-lab/matrix → reports written
 pnpm pack --pack-destination .profile-lab/package → tarball created after prepack build/typecheck/test
 temporary in-repository install → `pnpm exec dsh-profile-lab schema --check ...` → schema valid
 gate pass policy / regression policy / missing output / no-end driver → exit 0 / 1 / 2 / 3
+strict report schema → `ajv ... --spec=draft2020` → valid; repeated compare SHA-256 manifests are identical
+matrix assertion → 20 cells, 2 variants, 2 cases
 ```
