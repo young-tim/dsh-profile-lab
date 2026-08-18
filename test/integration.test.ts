@@ -35,4 +35,16 @@ describe("matrix runner", () => {
       run(e, out, path.resolve("fixtures/fake-dsh")),
     ).rejects.toThrow("unsafe workspace entry");
   });
+  it("rejects resume after an experiment input change", async () => {
+    const out = await mkdtemp(path.join(tmpdir(), "lab-resume-"));
+    const e = await loadExperiment("examples/experiment.yml");
+    await run(e, out, path.resolve("fixtures/fake-dsh"));
+    await expect(
+      run(
+        { ...e, name: "changed-input" },
+        out,
+        path.resolve("fixtures/fake-dsh"),
+      ),
+    ).rejects.toThrow("resume input hash mismatch");
+  });
 });

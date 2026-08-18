@@ -58,6 +58,7 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
         throw new Error("E_SAFETY: invalid output");
     await mkdir(base, { recursive: true });
     const journal = path.join(base, "journal.json");
+    const manifestFile = path.join(base, "manifest.json");
     if (restart)
         await rm(journal, { force: true });
     const casesLoaded = await loadCases(experimentFile, e, filters);
@@ -77,6 +78,23 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
     for (const variant of e.variants) {
         await readFile(resolveInput(experimentFile, variant.patch));
     }
+    const patchContents = await Promise.all(e.variants.map((variant) => readFile(resolveInput(experimentFile, variant.patch), "utf8")));
+    const inputHash = sha(JSON.stringify({
+        runner: 1,
+        experiment: e,
+        cases: casesLoaded,
+        patches: patchContents.map(sha),
+    }));
+    try {
+        const previous = JSON.parse(await readFile(manifestFile, "utf8"));
+        if (previous.input_hash !== inputHash && !restart)
+            throw new Error("E_CONFIG: resume input hash mismatch; use --restart");
+    }
+    catch (error) {
+        if (error.code !== "ENOENT")
+            throw error;
+    }
+    await atomic(manifestFile, { version: 1, input_hash: inputHash });
     let done = [];
     try {
         done = JSON.parse(await readFile(journal, "utf8"));
