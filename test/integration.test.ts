@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { loadExperiment } from "../src/config/index.js";
@@ -128,4 +129,31 @@ describe("matrix runner", () => {
       reason: "cancelled",
     });
   });
+  it("maps a real CLI SIGINT to exit code 3 and cancelled state", async () => {
+    const out = await mkdtemp(path.join(tmpdir(), "lab-cli-sigint-"));
+    const child = spawn(
+      process.execPath,
+      [
+        "dist/cli.js",
+        "run",
+        "examples/experiment.yml",
+        "--driver",
+        path.resolve("fixtures/fake-slow"),
+        "--output",
+        out,
+        "--restart",
+      ],
+      { cwd: process.cwd(), stdio: "ignore" },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    child.kill("SIGINT");
+    const code = await new Promise<number | null>((resolve) =>
+      child.once("close", resolve),
+    );
+    expect(code).toBe(3);
+    await expect(readRunState(out)).resolves.toMatchObject({
+      incomplete: true,
+      reason: "cancelled",
+    });
+  }, 10_000);
 });
