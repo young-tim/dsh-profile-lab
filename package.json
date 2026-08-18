@@ -4,10 +4,26 @@
   "description": "Reproducible local experiment matrices for DSH profiles",
   "license": "MIT",
   "type": "module",
-  "engines": { "node": "^22.19.0 || >=24.0.0" },
-  "bin": { "dsh-profile-lab": "./dist/cli.js" },
-  "exports": { ".": "./dist/index.js", "./cordis.patch.yml": "./cordis.patch.yml", "./package.json": "./package.json", "./schemas/experiment.schema.json": "./schemas/experiment.schema.json", "./schemas/report.schema.json": "./schemas/report.schema.json" },
-  "files": ["dist", "schemas", "cordis.patch.yml", "README.md", "LICENSE"],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "bin": {
+    "dsh-profile-lab": "./dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json",
+    "./schemas/experiment.schema.json": "./schemas/experiment.schema.json",
+    "./schemas/report.schema.json": "./schemas/report.schema.json"
+  },
+  "files": [
+    "dist",
+    "schemas",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "lint": "eslint .",
@@ -17,7 +33,18 @@
     "test:integration": "vitest run test/integration.test.ts",
     "test:package": "vitest run test/package.test.ts"
   },
-  "dependencies": { "yaml": "^2.8.2" },
-  "devDependencies": { "@eslint/js": "^9.39.1", "@types/node": "^24.10.1", "@vitest/coverage-v8": "^4.0.14", "eslint": "^9.39.1", "typescript": "^5.9.3", "typescript-eslint": "^8.46.4", "vitest": "^4.0.14" },
+  "dependencies": {
+    "yaml": "^2.8.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.14",
+    "dsh-profile-lab": "file:",
+    "eslint": "^9.39.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4",
+    "vitest": "^4.0.14"
+  },
   "packageManager": "pnpm@11.9.0"
 }

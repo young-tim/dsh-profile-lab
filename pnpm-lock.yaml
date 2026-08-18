@@ -21,6 +21,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.0.14
         version: 4.1.10(vitest@4.1.10)
+      dsh-profile-lab:
+        specifier: 'file:'
+        version: 'file:'
       eslint:
         specifier: ^9.39.1
         version: 9.39.5
@@ -451,6 +454,11 @@ packages:
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
+
+  'dsh-profile-lab@file:':
+    resolution: {directory: '', type: directory}
+    engines: {node: ^22.19.0 || >=24.0.0}
+    hasBin: true
 
   eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
@@ -1454,6 +1462,10 @@ snapshots:
   deep-is@0.1.4: {}
 
   detect-libc@2.1.2: {}
+
+  'dsh-profile-lab@file:':
+    dependencies:
+      yaml: 2.9.0
 
   eastasianwidth@0.2.0: {}
 

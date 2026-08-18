@@ -9,4 +9,4 @@
 - Phase 3 complete: deterministic JSON/Markdown/static HTML reports and policy gate.
 - Phase 4 complete: thin CLI, package exports, Cordis row/three tools, examples and bilingual quick start.
 - Phase 5 reached: lint/typecheck/tests/build/pack and coverage gate pass; evidence in docs/ACCEPTANCE.md.
-- Blocked: literal root `pnpm exec` and real DSH profile smoke require unresolved pnpm behavior / prohibited plugin installation.
+- Pending: real DSH profile smoke; literal root `pnpm exec` is resolved by local file self-reference.

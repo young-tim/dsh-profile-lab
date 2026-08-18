@@ -1,20 +1,15 @@
 # Blocked
 
-## Acceptance CLI resolution (2026-08-18)
+## Root CLI resolution resolved (2026-08-18)
 
-After `pnpm install` and `pnpm build`, the frozen acceptance invocation cannot
-resolve the root package's own bin:
+pnpm does not automatically expose a root package's own `bin` to `pnpm exec`.
+The development dependency `"dsh-profile-lab": "file:"` creates the local
+bin link without a registry publication. Verified:
 
 ```text
 $ pnpm exec dsh-profile-lab schema --check examples/experiment.yml
-undefined
-[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command "dsh-profile-lab" not found
+schema valid
 ```
-
-`node dist/cli.js schema --check examples/experiment.yml` works. This is pnpm
-self-bin resolution behavior, not a DSH operation. The root package is not a
-dependency of itself; changing that would require a workspace/package layout
-decision. This blocks only the literal `pnpm exec` acceptance spelling.
 
 ## Upstream metadata verification (2026-08-18)
 
