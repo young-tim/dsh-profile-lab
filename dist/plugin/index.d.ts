@@ -1,3 +1,4 @@
+import { type ToolRuntime } from "@deepseek-ai/dsh-tools";
 export declare const profile_lab_run: (input: {
     experiment: string;
     output: string;
@@ -94,8 +95,6 @@ export declare const profile_lab_gate: (input?: {
 export declare const name = "dsh-profile-lab";
 export declare const inject: string[];
 export declare const apply: (ctx: {
-    tools: {
-        register: (tool: unknown) => void;
-    };
-}) => void;
+    tools: Pick<ToolRuntime, "register">;
+}) => () => void;
 export default apply;

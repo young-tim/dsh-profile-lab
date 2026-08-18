@@ -4,17 +4,20 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import type { ToolDefinition } from "@deepseek-ai/dsh-tools";
 import { apply, profile_lab_gate } from "../src/plugin/index.js";
 const execute = promisify(execFile);
 describe("package surface", () =>
   it("ships one bundle row and three executable tools", async () => {
     const patch = await readFile("cordis.patch.yml", "utf8");
     expect(patch).toContain("dsh-profile-lab");
-    const tools: { execute: (args: unknown) => Promise<unknown> }[] = [];
-    apply({
+    const tools: ToolDefinition[] = [];
+    const dispose = apply({
       tools: {
-        register: (tool) =>
-          tools.push(tool as { execute: (args: unknown) => Promise<unknown> }),
+        register: (tool) => {
+          tools.push(tool);
+          return () => tools.splice(tools.indexOf(tool), 1);
+        },
       },
     });
     expect(tools).toHaveLength(3);
@@ -38,6 +41,8 @@ describe("package surface", () =>
       }),
     ).resolves.toMatchObject({ verdict: "pass", reasons: [] });
     await expect(profile_lab_gate()).rejects.toThrow("explicit policy");
+    dispose();
+    expect(tools).toEqual([]);
   }));
 
 describe("packed package", () => {
