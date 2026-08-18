@@ -6,6 +6,12 @@ export type Plan = {
     repetition: number;
     source: Case;
 };
+type RunState = {
+    version: 1;
+    incomplete: boolean;
+    reason?: "budget";
+};
+export declare const readRunState: (base: string) => Promise<RunState>;
 export declare const cells: (e: Experiment, cases?: Case[]) => {
     id: string;
     variant: string;
@@ -17,3 +23,4 @@ export declare const run: (e: Experiment, base: string, driver: string, experime
     tags?: string[];
     names?: string[];
 }, restart?: boolean) => Promise<Cell[]>;
+export {};

@@ -19,6 +19,16 @@ const safeTree = async (root) => {
         for (const name of await readdir(root))
             await safeTree(path.join(root, name));
 };
+export const readRunState = async (base) => {
+    try {
+        return JSON.parse(await readFile(path.join(base, "run-state.json"), "utf8"));
+    }
+    catch (error) {
+        if (error.code === "ENOENT")
+            return { version: 1, incomplete: false };
+        throw new Error("E_RUN: invalid run state");
+    }
+};
 export const cells = (e, cases = [{ name: "default", prompt: "" }]) => e.variants.flatMap((v) => cases.flatMap((c) => Array.from({ length: e.repetitions }, (_, i) => ({
     id: sha(`${v.id}\0${c.name}\0${i + 1}`).slice(0, 16),
     variant: v.id,
@@ -58,6 +68,7 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
         throw new Error("E_SAFETY: invalid output");
     await mkdir(base, { recursive: true });
     const journal = path.join(base, "journal.json");
+    const stateFile = path.join(base, "run-state.json");
     const manifestFile = path.join(base, "manifest.json");
     if (restart)
         await rm(journal, { force: true });
@@ -99,11 +110,14 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
     let next = 0;
     let totalTokens = done.reduce((n, c) => n + c.input_tokens + c.output_tokens + c.reasoning_tokens, 0);
     let writes = Promise.resolve();
+    let budgetStopped = false;
     const worker = async () => {
         while (next < todo.length) {
             const item = todo[next++];
-            if (totalTokens >= e.run.max_total_tokens)
+            if (totalTokens >= e.run.max_total_tokens) {
+                budgetStopped = true;
                 return;
+            }
             const variant = e.variants.find((v) => v.id === item.variant);
             const root = path.join(base, ".runs", item.id);
             const workspace = path.join(root, "workspace");
@@ -171,6 +185,11 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
     };
     await Promise.all(Array.from({ length: e.run.concurrency }, worker));
     await writes;
+    await atomic(stateFile, {
+        version: 1,
+        incomplete: budgetStopped,
+        ...(budgetStopped ? { reason: "budget" } : {}),
+    });
     if (done.length && done.every((c) => c.turn_reason === "missing"))
         throw new Error("E_RUN: driver produced no turn/end event");
     return done.sort((a, b) => a.id.localeCompare(b.id));

@@ -3,7 +3,7 @@ import { mkdtemp, readFile, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { loadExperiment } from "../src/config/index.js";
-import { run } from "../src/runner/index.js";
+import { readRunState, run } from "../src/runner/index.js";
 describe("matrix runner", () => {
   it("resumes completed cells without duplicate invocations or source writes", async () => {
     const out = await mkdtemp(path.join(tmpdir(), "lab-out-"));
@@ -44,5 +44,19 @@ describe("matrix runner", () => {
         path.resolve("fixtures/fake-dsh"),
       ),
     ).rejects.toThrow("resume input hash mismatch");
+  });
+  it("stops dispatching on budget and records an incomplete run", async () => {
+    const out = await mkdtemp(path.join(tmpdir(), "lab-budget-"));
+    const e = await loadExperiment("examples/experiment.yml");
+    const cells = await run(
+      { ...e, run: { ...e.run, concurrency: 1, max_total_tokens: 0 } },
+      out,
+      path.resolve("fixtures/fake-dsh"),
+    );
+    expect(cells).toEqual([]);
+    await expect(readRunState(out)).resolves.toMatchObject({
+      incomplete: true,
+      reason: "budget",
+    });
   });
 });

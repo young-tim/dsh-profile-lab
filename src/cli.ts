@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import YAML from "yaml";
 import { loadExperiment } from "./config/index.js";
-import { run } from "./runner/index.js";
+import { readRunState, run } from "./runner/index.js";
 import { report } from "./report/index.js";
 import { gate } from "./gate/index.js";
 const usage = (message: string): never => {
@@ -72,7 +72,8 @@ export const main = async (argv: string[] = process.argv.slice(2)) => {
       options.has("--restart"),
     );
     console.log(`run complete: ${done.length} cells`);
-    return done.some((c) => c.status === "error" || c.status === "cancelled")
+    return (await readRunState(output!)).incomplete ||
+      done.some((c) => c.status === "error" || c.status === "cancelled")
       ? 3
       : 0;
   }

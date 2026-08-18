@@ -1,6 +1,7 @@
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pareto, pct, summarize } from "../stats/index.js";
+import { readRunState } from "../runner/index.js";
 const esc = (x) => x.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 export const redact = (value) => value
     .replace(/\b(?:sk|ds|api)[_-][A-Za-z0-9_-]{8,}\b/gi, "[REDACTED]")
@@ -23,6 +24,7 @@ const put = async (file, text) => {
     await rename(`${file}.tmp`, file);
 };
 export const report = async (dir, e, cells) => {
+    const state = await readRunState(dir);
     const variants = e.variants.map((v) => {
         const summary = summarize(cells, v.id);
         const price = e.pricing?.[v.id];
@@ -57,7 +59,8 @@ export const report = async (dir, e, cells) => {
         version: 1,
         experiment: e.name,
         baseline,
-        incomplete: cells.some((c) => c.status === "error" || c.status === "cancelled"),
+        incomplete: state.incomplete ||
+            cells.some((c) => c.status === "error" || c.status === "cancelled"),
         manifest: {
             variants: e.variants.map((v) => v.id),
             repetitions: e.repetitions,

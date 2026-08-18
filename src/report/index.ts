@@ -2,6 +2,7 @@ import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pareto, pct, summarize } from "../stats/index.js";
 import type { Cell, Experiment } from "../types.js";
+import { readRunState } from "../runner/index.js";
 const esc = (x: string) =>
   x.replace(
     /[&<>"']/g,
@@ -32,6 +33,7 @@ const put = async (file: string, text: string) => {
   await rename(`${file}.tmp`, file);
 };
 export const report = async (dir: string, e: Experiment, cells: Cell[]) => {
+  const state = await readRunState(dir);
   const variants = e.variants.map((v) => {
     const summary = summarize(cells, v.id);
     const price = e.pricing?.[v.id];
@@ -78,9 +80,9 @@ export const report = async (dir: string, e: Experiment, cells: Cell[]) => {
     version: 1,
     experiment: e.name,
     baseline,
-    incomplete: cells.some(
-      (c) => c.status === "error" || c.status === "cancelled",
-    ),
+    incomplete:
+      state.incomplete ||
+      cells.some((c) => c.status === "error" || c.status === "cancelled"),
     manifest: {
       variants: e.variants.map((v) => v.id),
       repetitions: e.repetitions,
