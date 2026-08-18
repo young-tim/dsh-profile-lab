@@ -206,6 +206,26 @@ describe("strict command and configuration boundaries", () => {
       "duplicate",
     );
   });
+  it("rejects unknown assertions and invalid regexes before dispatch", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "assert-contract-"));
+    await mkdir(path.join(root, "cases"));
+    const e = { ...experiment, cases_dir: "cases" };
+    const { loadCases } = await import("../src/config/index.js");
+    await writeFile(
+      path.join(root, "cases", "x.yml"),
+      "name: x\nprompt: x\nassert: { surprise: true }\n",
+    );
+    await expect(
+      loadCases(path.join(root, "experiment.yml"), e),
+    ).rejects.toThrow("unknown assert field");
+    await writeFile(
+      path.join(root, "cases", "x.yml"),
+      "name: x\nprompt: x\nassert: { output_matches: '[' }\n",
+    );
+    await expect(
+      loadCases(path.join(root, "experiment.yml"), e),
+    ).rejects.toThrow("invalid output regex");
+  });
 });
 
 describe("plugin service boundary", () => {

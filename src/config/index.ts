@@ -166,6 +166,46 @@ export const loadCases = async (
     const caseName = value.name as string;
     if (seen.has(caseName)) fail(`duplicate case name: ${caseName}`);
     seen.add(caseName);
+    const assertions = value.assert ?? value.assertions;
+    if (assertions !== undefined) {
+      const assertion = object(assertions, "assert");
+      keys(
+        assertion,
+        [
+          "turn_end",
+          "tools_called",
+          "called_tools",
+          "tools_exact",
+          "tools_not_called",
+          "forbidden_tools",
+          "output_contains",
+          "output_not_contains",
+          "output_matches",
+          "output_regex",
+          "tool_args_contains",
+          "tool_result_contains",
+          "max_steps",
+          "max_tokens",
+          "no_tool_errors",
+          "output_judge",
+        ],
+        "assert",
+      );
+      for (const pattern of [
+        assertion.output_matches,
+        assertion.output_regex,
+      ]) {
+        if (pattern === undefined) continue;
+        const patterns = Array.isArray(pattern) ? pattern : [pattern];
+        if (patterns.some((item) => typeof item !== "string"))
+          fail("invalid output regex");
+        try {
+          patterns.forEach((item) => new RegExp(item as string));
+        } catch {
+          fail("invalid output regex");
+        }
+      }
+    }
     result.push(value as Case);
   }
   const filtered = result.filter(
