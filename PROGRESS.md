@@ -8,4 +8,5 @@
 - 2026-08-18: Phase 1 complete: ESM package, safe config contract, assertions, deterministic statistics, and unit tests.
 - 2026-08-18: Phase 2/3 partial: fake-driver argv runner, atomic journal/resume, session-event projection, JSON/Markdown/HTML reports, and gate implemented.
 - 2026-08-18: Phase 4 partial: package exports, bundle row and three thin plugin tools, bilingual quick start, package artifact test.
+- 2026-08-18: Decision-module tests raise coverage to 75.79% statements / 65.4% branches / 84.05% functions; threshold remains unmet.
 - Remaining: contract-complete isolation/cancellation/event adapter integration, comprehensive tests/coverage, real DSH profile smoke, and acceptance proof.

@@ -14,5 +14,5 @@ candidate pass rate below minimum; pass rate drop exceeds policy
 
 The last command deliberately exits 1. Full specification acceptance remains pending.
 
-Coverage currently fails (59.92% statements, 50.94% branches, 57.97%
+Coverage currently fails (75.79% statements, 65.4% branches, 84.05%
 functions); the required thresholds have not been claimed as passed.
