@@ -1,0 +1,10 @@
+schema_version: 1
+name: acceptance
+cases_dir: fixtures/cases
+workspace_template: fixtures/repo
+baseline: base
+variants:
+  - { id: base, profile: headless, patch: fixtures/variants/base.yml }
+  - { id: candidate, profile: headless, patch: fixtures/variants/candidate.yml }
+repetitions: 5
+run: { concurrency: 1, timeout_ms: 1000, max_runs: 10, max_total_tokens: 1000 }

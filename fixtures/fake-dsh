@@ -1,0 +1,2 @@
+#!/usr/bin/env node
+const i=process.argv.indexOf('--variant');const v=process.argv[i+1];console.log(JSON.stringify({pass:v==='base',duration_ms:10,tokens:20,steps:1}));
