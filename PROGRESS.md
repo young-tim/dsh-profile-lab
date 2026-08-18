@@ -7,4 +7,4 @@
 - Failure→fix→pass: concurrent journal lost a cell → serialized atomic writes → exact 20 cells; relative fixture lookup failed → experiment-relative fixtures → matrix passes; plugin gate always threw → explicit policy service → plugin gate test passes.
 - Completed: package test now builds, packs, temporarily installs and invokes the tarball CLI; official DSH RC accepts the Cordis overlay row.
 - Next: final command capture and clean commit.
-- Risk: OS SIGINT process-tree verification, report redaction/cost detail, and fully strict report-schema validation remain in progress.
+- Risk: OS SIGINT process-tree verification remains in progress; strict schema, redaction, cost and package smoke are verified.

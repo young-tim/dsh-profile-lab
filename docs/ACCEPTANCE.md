@@ -18,6 +18,7 @@ Environment: Node v24.12.0, pnpm 11.9.0, `@deepseek-ai/dsh` 0.1.0-rc.7. The froz
 1. Concurrent matrix workers overwrote `journal.json` (19 rather than 20 cells). The journal now chains atomic writes; restart smoke reports exactly 20.
 2. Cases were resolved from process CWD rather than the experiment directory. Fixtures now live under `examples/`; CLI and integration matrix tests pass.
 3. `profile_lab_gate` always threw. It now requires an explicit policy and evaluates the shared comparison result; plugin service tests pass.
+4. Strict report-schema validation initially rejected leaked `source` fields on cells. Cell projection now emits only public measurement fields; `pnpm exec ajv validate -s schemas/report.schema.json -d .profile-lab/schema-matrix/report.json --spec=draft2020` passes.
 
 ## Commands observed
 
