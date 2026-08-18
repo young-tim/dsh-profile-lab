@@ -1,2 +1,2 @@
 #!/usr/bin/env node
-const i=process.argv.indexOf('--variant');const v=process.argv[i+1];console.log(JSON.stringify({pass:v==='base',duration_ms:10,tokens:20,steps:1}));
+const i=process.argv.indexOf('--variant');const v=process.argv[i+1];console.log(JSON.stringify({type:'assistant/final',text:v==='base'?'pass':'regression'}));console.log(JSON.stringify({type:'step/end'}));console.log(JSON.stringify({type:'turn/end',status:v==='base'?'ok':'fail',duration_ms:10,steps:1,usage:{input:20,output:5}}));
