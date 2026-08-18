@@ -46,6 +46,12 @@ importers:
         specifier: ^4.0.14
         version: 4.1.10(@opentelemetry/api@1.9.0)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.10)(vite@8.2.1(@types/node@24.13.3)(yaml@2.9.0))
 
+  .profile-lab/tmp-package:
+    dependencies:
+      dsh-profile-lab:
+        specifier: file:../package/dsh-profile-lab-0.1.0.tgz
+        version: file:.profile-lab/package/dsh-profile-lab-0.1.0.tgz(38c91eb2d47c5b4ba2c8ead86dfcb4aa)
+
 packages:
 
   '@anthropic-ai/sdk@0.91.1':
@@ -3250,6 +3256,12 @@ packages:
 
   'dsh-profile-lab@file:':
     resolution: {directory: '', type: directory}
+    engines: {node: ^22.19.0 || >=24.0.0}
+    hasBin: true
+
+  dsh-profile-lab@file:.profile-lab/package/dsh-profile-lab-0.1.0.tgz:
+    resolution: {integrity: sha512-7PZa6Mt0MlwgEU56UOLVgG5/PsQkjw39Ms0dZWZu2y0o5eJ0bKTti6+sWu5gkq8zmVNcVLNCaxgwD9HnTWwMig==, tarball: file:.profile-lab/package/dsh-profile-lab-0.1.0.tgz}
+    version: 0.1.0
     engines: {node: ^22.19.0 || >=24.0.0}
     hasBin: true
 
@@ -8365,6 +8377,21 @@ snapshots:
   diff@9.0.0: {}
 
   dsh-profile-lab@file:(38c91eb2d47c5b4ba2c8ead86dfcb4aa):
+    dependencies:
+      '@deepseek-ai/dsh-tools': 0.1.0-rc.7(38c91eb2d47c5b4ba2c8ead86dfcb4aa)
+      yaml: 2.9.0
+    transitivePeerDependencies:
+      - '@deepseek-ai/cordis'
+      - '@deepseek-ai/dsh-agent'
+      - '@deepseek-ai/dsh-code-runtime'
+      - '@deepseek-ai/dsh-invariants'
+      - '@deepseek-ai/dsh-llm'
+      - '@deepseek-ai/dsh-scope'
+      - '@deepseek-ai/dsh-session'
+      - '@deepseek-ai/dsh-system-prompt'
+      - '@deepseek-ai/dsh-user-approval'
+
+  dsh-profile-lab@file:.profile-lab/package/dsh-profile-lab-0.1.0.tgz(38c91eb2d47c5b4ba2c8ead86dfcb4aa):
     dependencies:
       '@deepseek-ai/dsh-tools': 0.1.0-rc.7(38c91eb2d47c5b4ba2c8ead86dfcb4aa)
       yaml: 2.9.0
