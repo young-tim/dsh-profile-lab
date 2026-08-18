@@ -1,0 +1,5 @@
+name: beta
+prompt: solve beta
+assert:
+  turn_end: completed
+  output_contains: pass

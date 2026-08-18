@@ -1,2 +1,38 @@
-import { describe, expect, it } from 'vitest'; import { mkdtemp, readFile, symlink } from 'node:fs/promises'; import { tmpdir } from 'node:os'; import path from 'node:path'; import { loadExperiment } from '../src/config/index.js'; import { run } from '../src/runner/index.js';
-describe('matrix runner',()=>{it('resumes completed cells without duplicate invocations or source writes',async()=>{const out=await mkdtemp(path.join(tmpdir(),'lab-out-'));const e=await loadExperiment('examples/experiment.yml');e.workspace_template=path.resolve(e.workspace_template);const before=await readFile('fixtures/repo/README','utf8');const once=await run(e,out,path.resolve('fixtures/fake-dsh'));const twice=await run(e,out,path.resolve('fixtures/fake-dsh'));expect(once).toHaveLength(10);expect(twice).toHaveLength(10);expect(await readFile('fixtures/repo/README','utf8')).toBe(before);expect(new Set(twice.map(x=>x.id)).size).toBe(10);});it('rejects driver output with no durable end event',async()=>{const out=await mkdtemp(path.join(tmpdir(),'lab-out-'));const e=await loadExperiment('examples/experiment.yml');e.workspace_template=path.resolve(e.workspace_template);await expect(run(e,out,path.resolve('fixtures/fake-noevents'))).rejects.toThrow('no turn/end');});it('rejects source symlinks before driver launch',async()=>{const source=await mkdtemp(path.join(tmpdir(),'lab-source-'));await symlink('/tmp',path.join(source,'escape'));const out=await mkdtemp(path.join(tmpdir(),'lab-out-'));const e=await loadExperiment('examples/experiment.yml');e.workspace_template=source;await expect(run(e,out,path.resolve('fixtures/fake-dsh'))).rejects.toThrow('unsafe workspace entry');});});
+import { describe, expect, it } from "vitest";
+import { mkdtemp, readFile, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { loadExperiment } from "../src/config/index.js";
+import { run } from "../src/runner/index.js";
+describe("matrix runner", () => {
+  it("resumes completed cells without duplicate invocations or source writes", async () => {
+    const out = await mkdtemp(path.join(tmpdir(), "lab-out-"));
+    const e = await loadExperiment("examples/experiment.yml");
+    e.workspace_template = path.resolve(e.workspace_template);
+    const before = await readFile("fixtures/repo/README", "utf8");
+    const once = await run(e, out, path.resolve("fixtures/fake-dsh"));
+    const twice = await run(e, out, path.resolve("fixtures/fake-dsh"));
+    expect(once).toHaveLength(20);
+    expect(twice).toHaveLength(20);
+    expect(await readFile("fixtures/repo/README", "utf8")).toBe(before);
+    expect(new Set(twice.map((x) => x.id)).size).toBe(20);
+  });
+  it("rejects driver output with no durable end event", async () => {
+    const out = await mkdtemp(path.join(tmpdir(), "lab-out-"));
+    const e = await loadExperiment("examples/experiment.yml");
+    e.workspace_template = path.resolve(e.workspace_template);
+    await expect(
+      run(e, out, path.resolve("fixtures/fake-noevents")),
+    ).rejects.toThrow("no turn/end");
+  });
+  it("rejects source symlinks before driver launch", async () => {
+    const source = await mkdtemp(path.join(tmpdir(), "lab-source-"));
+    await symlink("/tmp", path.join(source, "escape"));
+    const out = await mkdtemp(path.join(tmpdir(), "lab-out-"));
+    const e = await loadExperiment("examples/experiment.yml");
+    e.workspace_template = source;
+    await expect(
+      run(e, out, path.resolve("fixtures/fake-dsh")),
+    ).rejects.toThrow("unsafe workspace entry");
+  });
+});

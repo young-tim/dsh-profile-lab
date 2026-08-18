@@ -1,2 +1,31 @@
-import { describe, expect, it } from 'vitest'; import { mkdtemp, readFile } from 'node:fs/promises'; import { tmpdir } from 'node:os'; import path from 'node:path'; import { apply, profile_lab_gate } from '../src/plugin/index.js';
-describe('package surface',()=>it('ships one bundle row and three executable tools',async()=>{const patch=await readFile('cordis.patch.yml','utf8');expect(patch).toContain('dsh-profile-lab');const tools: { execute:(args:unknown)=>Promise<unknown> }[]=[];apply({tools:{register:(tool)=>tools.push(tool as {execute:(args:unknown)=>Promise<unknown>})}});expect(tools).toHaveLength(3);const out=await mkdtemp(path.join(tmpdir(),'tool-'));await tools[0]!.execute({experiment:'examples/experiment.yml',output:out,driver:path.resolve('fixtures/fake-dsh')});await expect(tools[1]!.execute({experiment:'examples/experiment.yml',output:out})).resolves.toMatchObject({version:1});await expect(tools[2]!.execute({experiment:'examples/experiment.yml',output:out})).rejects.toThrow('explicit policy');await expect(profile_lab_gate()).rejects.toThrow('explicit policy');}));
+import { describe, expect, it } from "vitest";
+import { mkdtemp, readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { apply, profile_lab_gate } from "../src/plugin/index.js";
+describe("package surface", () =>
+  it("ships one bundle row and three executable tools", async () => {
+    const patch = await readFile("cordis.patch.yml", "utf8");
+    expect(patch).toContain("dsh-profile-lab");
+    const tools: { execute: (args: unknown) => Promise<unknown> }[] = [];
+    apply({
+      tools: {
+        register: (tool) =>
+          tools.push(tool as { execute: (args: unknown) => Promise<unknown> }),
+      },
+    });
+    expect(tools).toHaveLength(3);
+    const out = await mkdtemp(path.join(tmpdir(), "tool-"));
+    await tools[0]!.execute({
+      experiment: "examples/experiment.yml",
+      output: out,
+      driver: path.resolve("fixtures/fake-dsh"),
+    });
+    await expect(
+      tools[1]!.execute({ experiment: "examples/experiment.yml", output: out }),
+    ).resolves.toMatchObject({ version: 1 });
+    await expect(
+      tools[2]!.execute({ experiment: "examples/experiment.yml", output: out }),
+    ).rejects.toThrow("explicit policy");
+    await expect(profile_lab_gate()).rejects.toThrow("explicit policy");
+  }));

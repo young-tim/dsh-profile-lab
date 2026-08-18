@@ -8,6 +8,22 @@ export type RunSettings = {
     timeout_ms: number;
     max_runs: number;
     max_total_tokens: number;
+    env_allowlist?: string[];
+};
+export type Assertion = Record<string, unknown>;
+export type Case = {
+    name: string;
+    prompt: string;
+    tags?: string[];
+    retries?: number;
+    assert?: Assertion;
+    assertions?: Assertion;
+};
+export type GatePolicy = {
+    min_candidate_pass_rate?: number;
+    max_pass_rate_drop_pp?: number;
+    max_median_token_increase_pct?: number;
+    max_error_rate?: number;
 };
 export type Experiment = {
     schema_version: 1;
@@ -24,14 +40,7 @@ export type Experiment = {
     }>;
     gate?: GatePolicy;
 };
-export type Case = {
-    name: string;
-    prompt: string;
-    tags?: string[];
-    retries?: number;
-    assertions?: Record<string, unknown>;
-};
-export type CellStatus = 'pass' | 'fail' | 'error' | 'cancelled';
+export type CellStatus = "pass" | "fail" | "error" | "cancelled";
 export type Cell = {
     id: string;
     variant: string;
@@ -49,17 +58,17 @@ export type Cell = {
     cache_tokens: number;
     final_output_hash: string;
     evidence: string;
-};
-export type GatePolicy = {
-    min_candidate_pass_rate?: number;
-    max_pass_rate_drop_pp?: number;
-    max_median_token_increase_pct?: number;
-    max_error_rate?: number;
+    assertion_failures?: string[];
+    turn_reason?: string;
+    cost?: number;
 };
 export type Summary = {
     variant: string;
     case?: string;
     total: number;
+    pass: number;
+    fail: number;
+    error: number;
     pass_rate: number;
     error_rate: number;
     flaky: boolean;
@@ -71,4 +80,5 @@ export type Summary = {
     median_steps: number;
     p95_steps: number;
     wilson: [number, number];
+    cost?: number | "unavailable";
 };

@@ -1,4 +1,4 @@
-import type { Cell, Summary } from '../types.js';
+import type { Cell, Summary } from "../types.js";
 export declare const quantile: (xs: number[], p: number) => number;
 export declare const median: (xs: number[]) => number;
 export declare const wilson: (success: number, total: number) => [number, number];

@@ -30,13 +30,16 @@
     "LICENSE"
   ],
   "scripts": {
+    "format": "prettier --write src test fixtures examples schemas package.json",
+    "format:check": "prettier --check src test fixtures examples schemas package.json",
     "build": "tsc -p tsconfig.json",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage.enabled=false",
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run test/integration.test.ts",
-    "test:package": "vitest run test/package.test.ts"
+    "test:package": "vitest run test/package.test.ts",
+    "prepack": "pnpm build && pnpm typecheck && pnpm test"
   },
   "dependencies": {
     "@deepseek-ai/dsh-tools": "0.1.0-rc.7",
@@ -49,6 +52,7 @@
     "@vitest/coverage-v8": "^4.0.14",
     "dsh-profile-lab": "file:",
     "eslint": "^9.39.1",
+    "prettier": "^3.6.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.4",
     "vitest": "^4.0.14"

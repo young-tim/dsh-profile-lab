@@ -1,9 +1,50 @@
-export const quantile = (xs, p) => { if (!xs.length)
-    return 0; const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.max(0, Math.ceil(p * s.length) - 1))]; };
-export const median = (xs) => quantile(xs, .5);
-export const wilson = (success, total) => { if (!total)
-    return [0, 0]; const z = 1.96, p = success / total, d = 1 + z * z / total, c = (p + z * z / (2 * total)) / d, m = z * Math.sqrt((p * (1 - p) + z * z / (4 * total)) / total) / d; return [c - m, c + m]; };
-export const totalTokens = (c) => c.input_tokens + c.output_tokens + c.reasoning_tokens + c.cache_tokens;
-export const summarize = (cells, variant, caseName) => { const a = cells.filter(c => c.variant === variant && (!caseName || c.case === caseName)); const pass = a.filter(c => c.status === 'pass').length, error = a.filter(c => c.status === 'error').length; const n = (f) => a.map(f); return { variant, ...(caseName ? { case: caseName } : {}), total: a.length, pass_rate: a.length ? pass / a.length : 0, error_rate: a.length ? error / a.length : 0, flaky: pass > 0 && pass < a.length, repetition_label: a.length < 5 ? 'insufficient-repetitions' : undefined, median_duration_ms: median(n(c => c.duration_ms)), p95_duration_ms: quantile(n(c => c.duration_ms), .95), median_tokens: median(n(totalTokens)), p95_tokens: quantile(n(totalTokens), .95), median_steps: median(n(c => c.steps)), p95_steps: quantile(n(c => c.steps), .95), wilson: wilson(pass, a.length) }; };
-export const pct = (current, baseline) => baseline === 0 ? (current === 0 ? 0 : Infinity) : (current - baseline) / baseline * 100;
-export const pareto = (items, quality, cost, latency) => items.filter(x => !items.some(y => y !== x && quality(y) >= quality(x) && cost(y) <= cost(x) && latency(y) <= latency(x) && (quality(y) > quality(x) || cost(y) < cost(x) || latency(y) < latency(x))));
+export const quantile = (xs, p) => {
+    if (!xs.length)
+        return 0;
+    const s = [...xs].sort((a, b) => a - b);
+    return s[Math.min(s.length - 1, Math.max(0, Math.ceil(p * s.length) - 1))];
+};
+export const median = (xs) => quantile(xs, 0.5);
+export const wilson = (success, total) => {
+    if (!total)
+        return [0, 0];
+    const z = 1.96, p = success / total, d = 1 + (z * z) / total, c = (p + (z * z) / (2 * total)) / d, m = (z * Math.sqrt((p * (1 - p) + (z * z) / (4 * total)) / total)) / d;
+    return [c - m, c + m];
+};
+export const totalTokens = (c) => c.input_tokens + c.output_tokens + c.reasoning_tokens;
+export const summarize = (cells, variant, caseName) => {
+    const a = cells.filter((c) => c.variant === variant && (!caseName || c.case === caseName));
+    const pass = a.filter((c) => c.status === "pass").length, error = a.filter((c) => c.status === "error").length, fail = a.filter((c) => c.status === "fail").length;
+    const n = (f) => a.map(f);
+    return {
+        variant,
+        ...(caseName ? { case: caseName } : {}),
+        total: a.length,
+        pass,
+        fail,
+        error,
+        pass_rate: a.length ? pass / a.length : 0,
+        error_rate: a.length ? error / a.length : 0,
+        flaky: pass > 0 && pass < a.length,
+        repetition_label: a.length < 5 ? "insufficient-repetitions" : undefined,
+        median_duration_ms: median(n((c) => c.duration_ms)),
+        p95_duration_ms: quantile(n((c) => c.duration_ms), 0.95),
+        median_tokens: median(n(totalTokens)),
+        p95_tokens: quantile(n(totalTokens), 0.95),
+        median_steps: median(n((c) => c.steps)),
+        p95_steps: quantile(n((c) => c.steps), 0.95),
+        wilson: wilson(pass, a.length),
+    };
+};
+export const pct = (current, baseline) => baseline === 0
+    ? current === 0
+        ? 0
+        : Infinity
+    : ((current - baseline) / baseline) * 100;
+export const pareto = (items, quality, cost, latency) => items.filter((x) => !items.some((y) => y !== x &&
+    quality(y) >= quality(x) &&
+    cost(y) <= cost(x) &&
+    latency(y) <= latency(x) &&
+    (quality(y) > quality(x) ||
+        cost(y) < cost(x) ||
+        latency(y) < latency(x))));

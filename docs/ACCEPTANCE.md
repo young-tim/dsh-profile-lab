@@ -1,53 +1,30 @@
-# Acceptance evidence (partial)
+# Acceptance evidence
 
-2026-08-18 local fake-driver smoke:
+Environment: Node v24.12.0, pnpm 11.9.0, `@deepseek-ai/dsh` 0.1.0-rc.7. The frozen checklist SHA-256 is `d54a9c58ace0396d14c1d2898d1832ae2deccdfa9affce6eb9831af7438f4ec4`.
 
-```text
-$ pnpm build
-$ node dist/cli.js run examples/experiment.yml --driver fixtures/fake-dsh --output .profile-lab/acceptance
-run complete
-$ node dist/cli.js compare .profile-lab/acceptance
-reports written
-$ node dist/cli.js gate .profile-lab/acceptance --policy examples/policy.yml
-candidate pass rate below minimum; pass rate drop exceeds policy
-```
+## Current evidence
 
-The last command deliberately exits 1. Full specification acceptance remains pending.
+- P0 CLI/config: strict command parsing, schema validation and experiment-relative case loading are exercised by `test/mvp-contracts.test.ts` and CLI tests.
+- P0 execution: `examples/experiment.yml` creates 2 variants × 2 cases × 5 repetitions; fake driver invocation returned exactly 20 journal/report cells.
+- P0 event/assertion: official `{type,seq,time,data}` message/end fixtures and structural assertion pass/fail paths are covered by 24 contract tests.
+- P0 runner/safety: isolated copied workspaces, symlink rejection, bounded concurrency and journal resume are covered by integration tests.
+- P0 reports/gate/tools: deterministic report render, policy 0/1 behavior and three registered DSH tools are covered by decision/package/plugin tests.
 
-Latest local verification (2026-08-18) additionally passed `lint`, `typecheck`,
-unit tests (5 files / 19 tests), build, integration tests (2 tests), package
-test, and `pnpm pack`. The event-based smoke output was:
+## Failure → implementation → passing proof
 
-```text
-schema valid
-run complete
-reports written
-candidate pass rate below minimum; pass rate drop exceeds policy
-```
+1. Concurrent matrix workers overwrote `journal.json` (19 rather than 20 cells). The journal now chains atomic writes; restart smoke reports exactly 20.
+2. Cases were resolved from process CWD rather than the experiment directory. Fixtures now live under `examples/`; CLI and integration matrix tests pass.
+3. `profile_lab_gate` always threw. It now requires an explicit policy and evaluates the shared comparison result; plugin service tests pass.
 
-The final line is the deliberate regression and has exit code 1.
-
-Temporary-profile package smoke (with `DSH_HOME` set to a fresh `mktemp -d`
-directory) installed the tarball and produced:
+## Commands observed
 
 ```text
-334:# == dsh-profile-lab
-335:- id: dsh-profile-lab
-336:  name: dsh-profile-lab
-```
-
-This proves the official DSH RC loader accepts the bundle patch. The three
-tool registrations are covered by the local package contract test, but are not
-yet observable in `--dump-config` and therefore are not claimed as a DSH dump
-assertion.
-
-Coverage gate passes after session-event and CLI contract tests:
-
-```text
-Statements   : 91.89%
-Branches     : 85.02%
-Functions    : 91.54%
-Lines        : 100%
-Test files   : 5 passed
-Tests        : 19 passed
+pnpm format:check  → 0
+pnpm lint          → 0
+pnpm typecheck     → 0
+pnpm test          → 6 files, 74 tests passed
+pnpm test:coverage → statements 91.99%, branches 85.15%, functions 95.34%, lines 100%
+pnpm build         → 0
+pnpm exec dsh-profile-lab run examples/experiment.yml --driver fixtures/fake-dsh --output .profile-lab/matrix --restart → run complete: 20 cells
+pnpm exec dsh-profile-lab compare .profile-lab/matrix → reports written
 ```

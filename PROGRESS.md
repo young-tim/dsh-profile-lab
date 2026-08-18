@@ -1,12 +1,9 @@
 # Progress
 
-- Goal: publishable, local-first DSH Profile Lab with repeatable fake-driver matrices.
-- Order: foundation → isolated execution → decision reports/gate → CLI/plugin → release proof.
-- Maximum risk: DSH preview profile contract and profile-install boundary conflict.
-- Task 0: Node v24.12.0, pnpm 11.9.0, DSH 0.1.0-rc.7 and `dsh` bin verified; registry engines omission in BLOCKED.
-- Phase 1 complete: ESM package, safe config, assertions, statistics and tests.
-- Phase 2 complete: argv runner, atomic resume, session-event projection, isolation and symlink rejection.
-- Phase 3 complete: deterministic JSON/Markdown/static HTML reports and policy gate.
-- Phase 4 complete: thin CLI, package exports, Cordis row/three tools, examples and bilingual quick start.
-- Phase 5 reached: lint/typecheck/tests/build/pack and coverage gate pass; evidence in docs/ACCEPTANCE.md.
-- Real DSH temporary-profile smoke verifies the packed bundle row; three-tool registry dump remains pending.
+- Baseline: fingerprint verified; Node v24.12.0, pnpm 11.9.0, DSH 0.1.0-rc.7; original 20 tests passed but runner produced only default cases.
+- Completed: strict CLI/config/case loading, 20-cell matrix, official envelope event projection, structural assertions, isolated workspaces and atomic resume journal.
+- Completed: deterministic JSON/Markdown/HTML reports, baseline comparison/Pareto, policy gate, and three DSH tool registrations reuse services.
+- Evidence: `pnpm format:check`, lint, typecheck, test (74), coverage (91.99/85.15/95.34/100), build, and fake-driver 20-cell smoke pass.
+- Failure→fix→pass: concurrent journal lost a cell → serialized atomic writes → exact 20 cells; relative fixture lookup failed → experiment-relative fixtures → matrix passes; plugin gate always threw → explicit policy service → plugin gate test passes.
+- Next: package/integration verification, exit-code matrix, acceptance capture, then final clean commit.
+- Risk: zstd decoding and OS SIGINT process-tree verification remain unimplemented in this offline MVP revision.

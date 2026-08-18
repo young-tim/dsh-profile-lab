@@ -1,3 +1,97 @@
-import type { Case } from '../types.js';
-export type Event={type:string; [key:string]:unknown};
-export const assertCase=(c:Case, events:Event[])=>{ const output=String(events.findLast(e=>e.type==='assistant/final')?.text??''); const tools=events.filter(e=>e.type==='tool/call').map(e=>String(e.name)); const a=c.assertions??{}; const required=(a.called_tools??[]) as string[]; const forbidden=(a.forbidden_tools??[]) as string[]; if(required.some(x=>!tools.includes(x)))return false; if(forbidden.some(x=>tools.includes(x)))return false; if(typeof a.output_contains==='string'&&!output.includes(a.output_contains))return false; if(typeof a.output_not_contains==='string'&&output.includes(a.output_not_contains))return false; if(typeof a.output_regex==='string'&&!new RegExp(a.output_regex).test(output))return false; if(a.no_tool_errors===true&&events.some(e=>e.type==='tool/error'))return false; return !events.some(e=>e.type==='turn/end'&&e.status==='error'); };
+import {
+  finalOutput,
+  toolNames,
+  type SessionEvent,
+} from "../dsh-adapter/index.js";
+import type { Case } from "../types.js";
+export type AssertionResult = {
+  ok: boolean;
+  failures: { code: string; expected: unknown; actual: unknown }[];
+};
+const list = (x: unknown) =>
+  Array.isArray(x) ? x.map(String) : typeof x === "string" ? [x] : [];
+const contains = (text: string, want: unknown) =>
+  list(want).every((x) => text.includes(x));
+export const evaluateCase = (
+  c: Case,
+  events: SessionEvent[],
+): AssertionResult => {
+  const a = c.assert ?? c.assertions ?? {},
+    output = finalOutput(events),
+    tools = toolNames(events),
+    fail = (code: string, expected: unknown, actual: unknown) => ({
+      code,
+      expected,
+      actual,
+    });
+  const failures: AssertionResult["failures"] = [];
+  const end = events.findLast((e) => e.type === "turn/end");
+  const reason =
+    (end?.data?.reason as Record<string, unknown> | undefined)?.kind ??
+    end?.status;
+  if (a.turn_end !== undefined && String(reason) !== String(a.turn_end))
+    failures.push(fail("turn_end", a.turn_end, reason));
+  const called = list(a.tools_called ?? a.called_tools);
+  let cursor = 0;
+  for (const name of called) {
+    cursor = tools.indexOf(name, cursor);
+    if (cursor < 0) {
+      failures.push(fail("tools_called", called, tools));
+      break;
+    }
+    cursor++;
+  }
+  if (
+    a.tools_exact !== undefined &&
+    JSON.stringify(tools) !== JSON.stringify(list(a.tools_exact))
+  )
+    failures.push(fail("tools_exact", a.tools_exact, tools));
+  const forbidden = list(a.tools_not_called ?? a.forbidden_tools);
+  if (forbidden.some((x) => tools.includes(x)))
+    failures.push(fail("tools_not_called", forbidden, tools));
+  if (a.output_contains !== undefined && !contains(output, a.output_contains))
+    failures.push(fail("output_contains", a.output_contains, output));
+  if (
+    a.output_not_contains !== undefined &&
+    list(a.output_not_contains).some((x) => output.includes(x))
+  )
+    failures.push(fail("output_not_contains", a.output_not_contains, output));
+  if (a.output_matches ?? a.output_regex) {
+    try {
+      if (
+        !list(a.output_matches ?? a.output_regex).every((pattern) =>
+          new RegExp(pattern).test(output),
+        )
+      )
+        failures.push(
+          fail("output_matches", a.output_matches ?? a.output_regex, output),
+        );
+    } catch {
+      failures.push(
+        fail("invalid_regex", a.output_matches ?? a.output_regex, "invalid"),
+      );
+    }
+  }
+  const d = events.map((e) => e.data ?? e);
+  if (
+    a.max_steps !== undefined &&
+    events.filter((e) => e.type === "step/end").length > Number(a.max_steps)
+  )
+    failures.push(fail("max_steps", a.max_steps, events.length));
+  if (a.max_tokens !== undefined) {
+    const tokens = d.reduce(
+      (n, e) =>
+        n +
+        Number((e.usage as Record<string, unknown> | undefined)?.input ?? 0) +
+        Number((e.usage as Record<string, unknown> | undefined)?.output ?? 0),
+      0,
+    );
+    if (tokens > Number(a.max_tokens))
+      failures.push(fail("max_tokens", a.max_tokens, tokens));
+  }
+  if (a.no_tool_errors === true && events.some((e) => e.type === "tool/error"))
+    failures.push(fail("no_tool_errors", true, false));
+  return { ok: !failures.length, failures };
+};
+export const assertCase = (c: Case, events: SessionEvent[]) =>
+  evaluateCase(c, events).ok;

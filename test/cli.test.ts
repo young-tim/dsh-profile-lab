@@ -1,2 +1,39 @@
-import { describe, expect, it, vi } from 'vitest'; import { mkdtemp } from 'node:fs/promises'; import { tmpdir } from 'node:os'; import path from 'node:path'; import { main } from '../src/cli.js';
-describe('CLI application',()=>{it('validates, runs, compares and gates',async()=>{const out=await mkdtemp(path.join(tmpdir(),'cli-'));const log=vi.spyOn(console,'log').mockImplementation(()=>undefined);const err=vi.spyOn(console,'error').mockImplementation(()=>undefined);expect(await main(['schema','--check','examples/experiment.yml'])).toBe(0);expect(await main(['run','examples/experiment.yml','--driver',path.resolve('fixtures/fake-dsh'),'--output',out])).toBe(0);expect(await main(['compare',out])).toBe(0);expect(await main(['gate',out,'--policy','examples/policy.yml'])).toBe(1);expect(log).toHaveBeenCalled();expect(err).toHaveBeenCalled();log.mockRestore();err.mockRestore();});it('rejects invalid commands',async()=>{await expect(main(['run'])).rejects.toThrow('output required');await expect(main(['wat','--output','x'])).rejects.toThrow('unknown command');});});
+import { describe, expect, it, vi } from "vitest";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { main } from "../src/cli.js";
+describe("CLI application", () => {
+  it("validates, runs, compares and gates", async () => {
+    const out = await mkdtemp(path.join(tmpdir(), "cli-"));
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const err = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(await main(["schema", "--check", "examples/experiment.yml"])).toBe(
+      0,
+    );
+    expect(
+      await main([
+        "run",
+        "examples/experiment.yml",
+        "--driver",
+        path.resolve("fixtures/fake-dsh"),
+        "--output",
+        out,
+      ]),
+    ).toBe(0);
+    expect(await main(["compare", out])).toBe(0);
+    expect(await main(["gate", out, "--policy", "examples/policy.yml"])).toBe(
+      1,
+    );
+    expect(log).toHaveBeenCalled();
+    expect(err).toHaveBeenCalled();
+    log.mockRestore();
+    err.mockRestore();
+  });
+  it("rejects invalid commands", async () => {
+    await expect(main(["run"])).rejects.toThrow("output required");
+    await expect(main(["wat", "--output", "x"])).rejects.toThrow(
+      "unknown command",
+    );
+  });
+});

@@ -1,1 +1,51 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["version","variants","cells"],"properties":{"version":{"const":1},"variants":{"type":"array"},"cells":{"type":"array"}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "version",
+    "experiment",
+    "baseline",
+    "incomplete",
+    "manifest",
+    "variants",
+    "per_case",
+    "comparisons",
+    "pareto",
+    "cells"
+  ],
+  "properties": {
+    "$schema": { "const": "schemas/report.schema.json" },
+    "version": { "const": 1 },
+    "experiment": { "type": "string" },
+    "baseline": { "type": "string" },
+    "incomplete": { "type": "boolean" },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["variants", "repetitions"],
+      "properties": {
+        "variants": { "type": "array", "items": { "type": "string" } },
+        "repetitions": { "type": "integer" }
+      }
+    },
+    "variants": { "type": "array", "items": { "type": "object" } },
+    "per_case": { "type": "array", "items": { "type": "object" } },
+    "comparisons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["variant", "pass_rate_delta_pp", "median_token_delta_pct"],
+        "properties": {
+          "variant": { "type": "string" },
+          "pass_rate_delta_pp": { "type": "number" },
+          "median_token_delta_pct": { "type": "number" }
+        }
+      }
+    },
+    "pareto": { "type": "array", "items": { "type": "string" } },
+    "cells": { "type": "array", "items": { "type": "object" } }
+  }
+}

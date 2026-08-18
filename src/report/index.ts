@@ -1,2 +1,69 @@
-import { mkdir, rename, writeFile } from 'node:fs/promises'; import path from 'node:path'; import { summarize } from '../stats/index.js'; import type { Cell, Experiment } from '../types.js'; const esc=(x:string)=>x.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!)); const put=async(f:string,s:string)=>{await mkdir(path.dirname(f),{recursive:true});await writeFile(f+'.tmp',s);await rename(f+'.tmp',f)};
-export const report=async(dir:string,e:Experiment,cells:Cell[])=>{const variants=e.variants.map(v=>summarize(cells,v.id));const data={version:1,experiment:e.name,variants,cells};await put(path.join(dir,'report.json'),JSON.stringify(data,null,2)+'\n');const md=`# ${e.name}\n\n| Variant | Pass rate | Median tokens |\n|---|---:|---:|\n${variants.map(v=>`| ${v.variant} | ${v.pass_rate} | ${v.median_tokens} |`).join('\n')}\n`;await put(path.join(dir,'report.md'),md);await put(path.join(dir,'report.html'),`<!doctype html><meta charset="utf-8"><title>${esc(e.name)}</title><pre>${esc(md)}</pre>`);return data;};
+import { mkdir, rename, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { pareto, pct, summarize } from "../stats/index.js";
+import type { Cell, Experiment } from "../types.js";
+const esc = (x: string) =>
+  x.replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ]!,
+  );
+const put = async (file: string, text: string) => {
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(`${file}.tmp`, text);
+  await rename(`${file}.tmp`, file);
+};
+export const report = async (dir: string, e: Experiment, cells: Cell[]) => {
+  const variants = e.variants.map((v) => summarize(cells, v.id));
+  const baseline = e.baseline ?? e.variants[0]?.id ?? "";
+  const per_case = e.variants.flatMap((v) =>
+    [...new Set(cells.map((c) => c.case))]
+      .sort()
+      .map((c) => summarize(cells, v.id, c)),
+  );
+  const base = variants.find((v) => v.variant === baseline) ?? variants[0]!;
+  const comparisons = variants
+    .filter((v) => v.variant !== baseline)
+    .map((v) => ({
+      variant: v.variant,
+      pass_rate_delta_pp: (v.pass_rate - base.pass_rate) * 100,
+      median_token_delta_pct: pct(v.median_tokens, base.median_tokens),
+    }));
+  const front = pareto(
+    variants,
+    (x) => x.pass_rate,
+    (x) => x.median_tokens,
+    (x) => x.median_duration_ms,
+  ).map((x) => x.variant);
+  const data = {
+    $schema: "schemas/report.schema.json",
+    version: 1,
+    experiment: e.name,
+    baseline,
+    incomplete: cells.some(
+      (c) => c.status === "error" || c.status === "cancelled",
+    ),
+    manifest: {
+      variants: e.variants.map((v) => v.id),
+      repetitions: e.repetitions,
+    },
+    variants,
+    per_case,
+    comparisons,
+    pareto: front,
+    cells: [...cells].sort((a, b) => a.id.localeCompare(b.id)),
+  };
+  await put(
+    path.join(dir, "report.json"),
+    JSON.stringify(data, null, 2) + "\n",
+  );
+  const md = `# ${e.name}\n\nBaseline: ${baseline}\n\n| Variant | Pass rate | Median tokens |\n|---|---:|---:|\n${variants.map((v) => `| ${v.variant} | ${v.pass_rate} | ${v.median_tokens} |`).join("\n")}\n\n## Per case\n\n${per_case.map((v) => `- ${v.variant}/${v.case ?? ""}: ${v.pass}/${v.total} pass`).join("\n")}\n`;
+  await put(path.join(dir, "report.md"), md);
+  await put(
+    path.join(dir, "report.html"),
+    `<!doctype html><meta charset="utf-8"><title>${esc(e.name)}</title><pre>${esc(md)}</pre>`,
+  );
+  return data;
+};

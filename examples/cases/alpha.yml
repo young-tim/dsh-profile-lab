@@ -1,0 +1,5 @@
+name: alpha
+prompt: solve alpha
+assert:
+  turn_end: completed
+  output_contains: pass

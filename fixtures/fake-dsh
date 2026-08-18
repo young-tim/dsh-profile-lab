@@ -1,2 +1,30 @@
 #!/usr/bin/env node
-const i=process.argv.indexOf('--variant');const v=process.argv[i+1];console.log(JSON.stringify({type:'assistant/final',text:v==='base'?'pass':'regression'}));console.log(JSON.stringify({type:'step/end'}));console.log(JSON.stringify({type:'turn/end',status:v==='base'?'ok':'fail',duration_ms:10,steps:1,usage:{input:20,output:5}}));
+const get = (x) => process.argv[process.argv.indexOf(x) + 1];
+const v = get("--variant");
+console.log(
+  JSON.stringify({
+    type: "assistant/message",
+    seq: 1,
+    time: "2026-01-01T00:00:00Z",
+    data: {
+      content: [{ type: "text", text: v === "base" ? "pass" : "regression" }],
+      usage: { input: 20, output: 5 },
+    },
+  }),
+);
+console.log(
+  JSON.stringify({
+    type: "step/end",
+    seq: 2,
+    time: "2026-01-01T00:00:00Z",
+    data: {},
+  }),
+);
+console.log(
+  JSON.stringify({
+    type: "turn/end",
+    seq: 3,
+    time: "2026-01-01T00:00:00Z",
+    data: { reason: { kind: "completed" }, duration_ms: 10, steps: 1 },
+  }),
+);

@@ -1,5 +1,172 @@
-import { describe, expect, it } from 'vitest'; import { mkdtemp, writeFile, mkdir } from 'node:fs/promises'; import { tmpdir } from 'node:os'; import path from 'node:path'; import { assertCase, loadExperiment, pareto, pct, quantile, summarize, wilson } from '../src/index.js'; import type { Cell } from '../src/types.js';
-const cell=(status:Cell['status'], n:number):Cell=>({id:String(n),variant:'a',case:'c',repetition:n,status,attempts:1,duration_ms:n*10,steps:n,tool_calls:0,tool_errors:0,input_tokens:n,output_tokens:n,reasoning_tokens:0,cache_tokens:0,final_output_hash:'x',evidence:'x'});
-describe('statistics',()=>{it('uses nearest-rank quantiles and Wilson intervals',()=>{expect(quantile([4,1,3,2],.95)).toBe(4); expect(quantile([],.5)).toBe(0);expect(quantile([1],-1)).toBe(1); const [lo,hi]=wilson(5,5); expect(lo).toBeGreaterThan(.5); expect(hi).toBe(1);expect(wilson(0,0)).toEqual([0,0]);}); it('summarizes flakes and low repetitions',()=>{const s=summarize([cell('pass',1),cell('fail',2)],'a'); expect(s.flaky).toBe(true);expect(s.repetition_label).toBe('insufficient-repetitions');expect(s.median_tokens).toBe(2);}); it('calculates percent and Pareto frontiers',()=>{expect(pct(2,0)).toBe(Infinity);expect(pct(0,0)).toBe(0);expect(pct(1,2)).toBe(-50); const x=[{q:1,c:1,l:1},{q:2,c:1,l:1},{q:1,c:2,l:2}];expect(pareto(x,a=>a.q,a=>a.c,a=>a.l)).toEqual([x[1]]);});});
-describe('config and assertions',()=>{it('rejects unsafe configuration before use',async()=>{const d=await mkdtemp(path.join(tmpdir(),'lab-')); await mkdir(path.join(d,'cases')); await writeFile(path.join(d,'e.yml'),'schema_version: 1\nname: x\ncases_dir: ../cases\nworkspace_template: repo\nbaseline: a\nvariants:\n  - {id: a, profile: h, patch: a.yml}\n  - {id: b, profile: h, patch: b.yml}\nrepetitions: 1\nrun: {concurrency: 1, timeout_ms: 1, max_runs: 2, max_total_tokens: 0}\n'); await expect(loadExperiment(path.join(d,'e.yml'))).rejects.toThrow('invalid cases_dir path');}); it('evaluates structural assertions',()=>{expect(assertCase({name:'x',prompt:'p',assertions:{called_tools:['read'],output_contains:'done'}},[{type:'tool/call',name:'read'},{type:'assistant/final',text:'done'},{type:'turn/end',status:'ok'}])).toBe(true);expect(assertCase({name:'x',prompt:'p',assertions:{forbidden_tools:['rm']}},[{type:'tool/call',name:'rm'}])).toBe(false);});});
-describe('config and assertions',()=>{it('rejects unsafe configuration before use',async()=>{const d=await mkdtemp(path.join(tmpdir(),'lab-')); await mkdir(path.join(d,'cases')); await writeFile(path.join(d,'e.yml'),'schema_version: 1\nname: x\ncases_dir: ../cases\nworkspace_template: repo\nbaseline: a\nvariants:\n  - {id: a, profile: h, patch: a.yml}\n  - {id: b, profile: h, patch: b.yml}\nrepetitions: 1\nrun: {concurrency: 1, timeout_ms: 1, max_runs: 2, max_total_tokens: 0}\n'); await expect(loadExperiment(path.join(d,'e.yml'))).rejects.toThrow('invalid cases_dir path');}); it('accepts the contract and rejects unknown fields',async()=>{expect((await loadExperiment('examples/experiment.yml')).baseline).toBe('base');const d=await mkdtemp(path.join(tmpdir(),'lab-'));const common='schema_version: 1\nname: x\ncases_dir: c\nworkspace_template: w\nbaseline: a\nvariants: [{id: a, profile: h, patch: a.yml}, {id: b, profile: h, patch: b.yml}]\nrepetitions: 1\nrun: {concurrency: 1, timeout_ms: 1, max_runs: 2, max_total_tokens: 0}\n';await writeFile(path.join(d,'e.yml'),common+'extra: x\n');await expect(loadExperiment(path.join(d,'e.yml'))).rejects.toThrow('unknown top-level field');await writeFile(path.join(d,'e.yml'),common.replace('baseline: a','baseline: gone'));await expect(loadExperiment(path.join(d,'e.yml'))).rejects.toThrow('baseline variant missing');}); it('evaluates structural assertions',()=>{expect(assertCase({name:'x',prompt:'p',assertions:{called_tools:['read'],output_contains:'done'}},[{type:'tool/call',name:'read'},{type:'assistant/final',text:'done'},{type:'turn/end',status:'ok'}])).toBe(true);expect(assertCase({name:'x',prompt:'p',assertions:{forbidden_tools:['rm']}},[{type:'tool/call',name:'rm'}])).toBe(false);expect(assertCase({name:'x',prompt:'p',assertions:{output_not_contains:'bad'}},[{type:'assistant/final',text:'bad'}])).toBe(false);expect(assertCase({name:'x',prompt:'p',assertions:{output_regex:'done',no_tool_errors:true}},[{type:'assistant/final',text:'done'},{type:'tool/error'}])).toBe(false);});});
+import { describe, expect, it } from "vitest";
+import { mkdtemp, writeFile, mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import {
+  assertCase,
+  loadExperiment,
+  pareto,
+  pct,
+  quantile,
+  summarize,
+  wilson,
+} from "../src/index.js";
+import type { Cell } from "../src/types.js";
+const cell = (status: Cell["status"], n: number): Cell => ({
+  id: String(n),
+  variant: "a",
+  case: "c",
+  repetition: n,
+  status,
+  attempts: 1,
+  duration_ms: n * 10,
+  steps: n,
+  tool_calls: 0,
+  tool_errors: 0,
+  input_tokens: n,
+  output_tokens: n,
+  reasoning_tokens: 0,
+  cache_tokens: 0,
+  final_output_hash: "x",
+  evidence: "x",
+});
+describe("statistics", () => {
+  it("uses nearest-rank quantiles and Wilson intervals", () => {
+    expect(quantile([4, 1, 3, 2], 0.95)).toBe(4);
+    expect(quantile([], 0.5)).toBe(0);
+    expect(quantile([1], -1)).toBe(1);
+    const [lo, hi] = wilson(5, 5);
+    expect(lo).toBeGreaterThan(0.5);
+    expect(hi).toBe(1);
+    expect(wilson(0, 0)).toEqual([0, 0]);
+  });
+  it("summarizes flakes and low repetitions", () => {
+    const s = summarize([cell("pass", 1), cell("fail", 2)], "a");
+    expect(s.flaky).toBe(true);
+    expect(s.repetition_label).toBe("insufficient-repetitions");
+    expect(s.median_tokens).toBe(2);
+  });
+  it("calculates percent and Pareto frontiers", () => {
+    expect(pct(2, 0)).toBe(Infinity);
+    expect(pct(0, 0)).toBe(0);
+    expect(pct(1, 2)).toBe(-50);
+    const x = [
+      { q: 1, c: 1, l: 1 },
+      { q: 2, c: 1, l: 1 },
+      { q: 1, c: 2, l: 2 },
+    ];
+    expect(
+      pareto(
+        x,
+        (a) => a.q,
+        (a) => a.c,
+        (a) => a.l,
+      ),
+    ).toEqual([x[1]]);
+  });
+});
+describe("config and assertions", () => {
+  it("rejects unsafe configuration before use", async () => {
+    const d = await mkdtemp(path.join(tmpdir(), "lab-"));
+    await mkdir(path.join(d, "cases"));
+    await writeFile(
+      path.join(d, "e.yml"),
+      "schema_version: 1\nname: x\ncases_dir: ../cases\nworkspace_template: repo\nbaseline: a\nvariants:\n  - {id: a, profile: h, patch: a.yml}\n  - {id: b, profile: h, patch: b.yml}\nrepetitions: 1\nrun: {concurrency: 1, timeout_ms: 1, max_runs: 2, max_total_tokens: 0}\n",
+    );
+    await expect(loadExperiment(path.join(d, "e.yml"))).rejects.toThrow(
+      "invalid cases_dir path",
+    );
+  });
+  it("evaluates structural assertions", () => {
+    expect(
+      assertCase(
+        {
+          name: "x",
+          prompt: "p",
+          assertions: { called_tools: ["read"], output_contains: "done" },
+        },
+        [
+          { type: "tool/call", name: "read" },
+          { type: "assistant/final", text: "done" },
+          { type: "turn/end", status: "ok" },
+        ],
+      ),
+    ).toBe(true);
+    expect(
+      assertCase(
+        { name: "x", prompt: "p", assertions: { forbidden_tools: ["rm"] } },
+        [{ type: "tool/call", name: "rm" }],
+      ),
+    ).toBe(false);
+  });
+});
+describe("config and assertions", () => {
+  it("rejects unsafe configuration before use", async () => {
+    const d = await mkdtemp(path.join(tmpdir(), "lab-"));
+    await mkdir(path.join(d, "cases"));
+    await writeFile(
+      path.join(d, "e.yml"),
+      "schema_version: 1\nname: x\ncases_dir: ../cases\nworkspace_template: repo\nbaseline: a\nvariants:\n  - {id: a, profile: h, patch: a.yml}\n  - {id: b, profile: h, patch: b.yml}\nrepetitions: 1\nrun: {concurrency: 1, timeout_ms: 1, max_runs: 2, max_total_tokens: 0}\n",
+    );
+    await expect(loadExperiment(path.join(d, "e.yml"))).rejects.toThrow(
+      "invalid cases_dir path",
+    );
+  });
+  it("accepts the contract and rejects unknown fields", async () => {
+    expect((await loadExperiment("examples/experiment.yml")).baseline).toBe(
+      "base",
+    );
+    const d = await mkdtemp(path.join(tmpdir(), "lab-"));
+    const common =
+      "schema_version: 1\nname: x\ncases_dir: c\nworkspace_template: w\nbaseline: a\nvariants: [{id: a, profile: h, patch: a.yml}, {id: b, profile: h, patch: b.yml}]\nrepetitions: 1\nrun: {concurrency: 1, timeout_ms: 1, max_runs: 2, max_total_tokens: 0}\n";
+    await writeFile(path.join(d, "e.yml"), common + "extra: x\n");
+    await expect(loadExperiment(path.join(d, "e.yml"))).rejects.toThrow(
+      "unknown top-level field",
+    );
+    await writeFile(
+      path.join(d, "e.yml"),
+      common.replace("baseline: a", "baseline: gone"),
+    );
+    await expect(loadExperiment(path.join(d, "e.yml"))).rejects.toThrow(
+      "baseline variant missing",
+    );
+  });
+  it("evaluates structural assertions", () => {
+    expect(
+      assertCase(
+        {
+          name: "x",
+          prompt: "p",
+          assertions: { called_tools: ["read"], output_contains: "done" },
+        },
+        [
+          { type: "tool/call", name: "read" },
+          { type: "assistant/final", text: "done" },
+          { type: "turn/end", status: "ok" },
+        ],
+      ),
+    ).toBe(true);
+    expect(
+      assertCase(
+        { name: "x", prompt: "p", assertions: { forbidden_tools: ["rm"] } },
+        [{ type: "tool/call", name: "rm" }],
+      ),
+    ).toBe(false);
+    expect(
+      assertCase(
+        { name: "x", prompt: "p", assertions: { output_not_contains: "bad" } },
+        [{ type: "assistant/final", text: "bad" }],
+      ),
+    ).toBe(false);
+    expect(
+      assertCase(
+        {
+          name: "x",
+          prompt: "p",
+          assertions: { output_regex: "done", no_tool_errors: true },
+        },
+        [{ type: "assistant/final", text: "done" }, { type: "tool/error" }],
+      ),
+    ).toBe(false);
+  });
+});
