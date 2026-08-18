@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { zstdDecompressSync } from "node:zlib";
+import path from "node:path";
 import type { Cell } from "../types.js";
 export type SessionEvent = {
   type: string;
@@ -34,8 +36,30 @@ export const parseJsonl = (text: string): SessionEvent[] =>
         return [];
       }
     });
-export const readSession = async (file: string) =>
-  parseJsonl(await readFile(file, "utf8"));
+export type SessionRead = { events: SessionEvent[]; corrupt_frames: number };
+export const parseSessionBuffer = (
+  buffer: Buffer,
+  compressed = false,
+): SessionRead => {
+  try {
+    return {
+      events: parseJsonl(
+        (compressed ? zstdDecompressSync(buffer) : buffer).toString("utf8"),
+      ),
+      corrupt_frames: 0,
+    };
+  } catch (error) {
+    if (!compressed) throw error;
+    return { events: [], corrupt_frames: 1 };
+  }
+};
+export const readSession = async (file: string) => {
+  const result = parseSessionBuffer(
+    await readFile(file),
+    [".zst", ".zstd"].includes(path.extname(file)),
+  );
+  return result.events;
+};
 const data = (event: SessionEvent) => event.data ?? event;
 export const finalOutput = (events: SessionEvent[]) => {
   const message = events.findLast((e) => e.type === "assistant/message");

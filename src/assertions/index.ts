@@ -8,6 +8,11 @@ export type AssertionResult = {
   ok: boolean;
   failures: { code: string; expected: unknown; actual: unknown }[];
 };
+export type OutputJudge = (input: {
+  prompt: string;
+  output: string;
+  rubric: unknown;
+}) => Promise<boolean>;
 const list = (x: unknown) =>
   Array.isArray(x) ? x.map(String) : typeof x === "string" ? [x] : [];
 const contains = (text: string, want: unknown) =>
@@ -73,6 +78,32 @@ export const evaluateCase = (
     }
   }
   const d = events.map((e) => e.data ?? e);
+  const encoded = (type: string) =>
+    d
+      .filter((e, index) => events[index]?.type === type)
+      .map((e) => JSON.stringify(e));
+  if (
+    a.tool_args_contains !== undefined &&
+    !list(a.tool_args_contains).every((needle) =>
+      encoded("tool/call").some((value) => value.includes(needle)),
+    )
+  )
+    failures.push(
+      fail("tool_args_contains", a.tool_args_contains, encoded("tool/call")),
+    );
+  if (
+    a.tool_result_contains !== undefined &&
+    !list(a.tool_result_contains).every((needle) =>
+      encoded("tool/result").some((value) => value.includes(needle)),
+    )
+  )
+    failures.push(
+      fail(
+        "tool_result_contains",
+        a.tool_result_contains,
+        encoded("tool/result"),
+      ),
+    );
   if (
     a.max_steps !== undefined &&
     events.filter((e) => e.type === "step/end").length > Number(a.max_steps)
@@ -92,6 +123,39 @@ export const evaluateCase = (
   if (a.no_tool_errors === true && events.some((e) => e.type === "tool/error"))
     failures.push(fail("no_tool_errors", true, false));
   return { ok: !failures.length, failures };
+};
+export const evaluateCaseWithJudge = async (
+  c: Case,
+  events: SessionEvent[],
+  judge?: OutputJudge,
+): Promise<AssertionResult> => {
+  const structural = evaluateCase(c, events);
+  const rubric = (c.assert ?? c.assertions ?? {}).output_judge;
+  if (!structural.ok || rubric === undefined) return structural;
+  if (!judge)
+    return {
+      ok: false,
+      failures: [
+        {
+          code: "output_judge_unavailable",
+          expected: rubric,
+          actual: "no judge",
+        },
+      ],
+    };
+  const ok = await judge({
+    prompt: c.prompt,
+    output: finalOutput(events),
+    rubric,
+  });
+  return ok
+    ? structural
+    : {
+        ok: false,
+        failures: [
+          { code: "output_judge", expected: rubric, actual: "rejected" },
+        ],
+      };
 };
 export const assertCase = (c: Case, events: SessionEvent[]) =>
   evaluateCase(c, events).ok;
