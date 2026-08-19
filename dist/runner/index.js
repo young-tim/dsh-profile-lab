@@ -143,8 +143,8 @@ const executable = async (driver) => {
             .split(path.delimiter)
             .filter(Boolean)
             .flatMap((directory) => process.platform === "win32"
-            ? [".exe", ".cmd", ".bat", ""].map((ext) => path.join(directory, `${driver}${ext}`))
-            : [path.join(directory, driver)]);
+            ? [".exe", ".cmd", ".bat", ""].map((ext) => path.resolve(directory, `${driver}${ext}`))
+            : [path.resolve(directory, driver)]);
     for (const candidate of candidates)
         try {
             await access(candidate, constants.X_OK);
