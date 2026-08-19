@@ -230,7 +230,7 @@ pnpm pack --pack-destination .profile-lab/package
 Acceptance additionally requires three deliberate red-to-green demonstrations:
 an invalid path exits 2 before any fake-driver invocation; a known regression
 exits 1 with the expected reason; an interrupted run resumes without duplicate
-invocations. Paste actual outputs into `docs/ACCEPTANCE.md`.
+invocations. Paste actual outputs into the release report.
 
 No `skip`, `todo`, weakened assertion, mocked unit under test, `|| true`, coverage
 exclusion of business modules, or edited golden expected output solely to hide a
@@ -245,9 +245,9 @@ regression is acceptable.
 5. Release proof: full checks, package smoke, threat tests, acceptance evidence,
    changelog, and migration/compatibility notes.
 
-Each phase ends with a green commit and an updated `PROGRESS.md`. If an upstream
+Each phase ends with a green commit and updated progress notes. If an upstream
 contract differs from this verified baseline, isolate the adaptation, record
-evidence in `BLOCKED.md`, and continue with independent pure modules.
+the evidence, and continue with independent pure modules.
 
 ## 12. Definition of done
 
@@ -256,5 +256,5 @@ produce all three deterministic report formats, make a policy gate fail for a
 known regression, survive interruption/resume without duplicate work, and load
 the packed bundle in the current official DSH profile. All required checks pass,
 coverage meets the gate, skipped tests are zero, safety fixtures leave their
-source directories byte-identical, and `BLOCKED.md` contains either `None` or a
-bounded, evidenced non-MVP issue.
+source directories byte-identical, and any blocking issue is bounded and
+evidenced.

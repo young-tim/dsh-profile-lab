@@ -33,7 +33,8 @@ dsh plugin --profile web remove dsh-profile-lab
 ```
 
 第三方 DSH 插件以当前用户权限运行。安装前应检查源码；Profile Lab 默认临时复用
-当前 DSH 登录凭证，子进程结束后立即清理。安全边界见 [`SECURITY.md`](SECURITY.md)。
+当前 DSH 登录凭证，子进程结束后立即清理。安全边界见
+[`docs/SECURITY.md`](docs/SECURITY.md)。
 
 ## Requirements
 
@@ -206,7 +207,4 @@ pnpm test:integration
 pnpm test:package
 ```
 
-详细产品合同、功能验收和实际证据见
-[`docs/DEVELOPMENT_SPEC.md`](docs/DEVELOPMENT_SPEC.md)、
-[`docs/FEATURE_CHECKLIST.md`](docs/FEATURE_CHECKLIST.md) 和
-[`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md)。
+详细产品合同见 [`docs/DEVELOPMENT_SPEC.md`](docs/DEVELOPMENT_SPEC.md)。
