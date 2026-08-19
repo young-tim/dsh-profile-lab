@@ -13,3 +13,5 @@
   in-place source execution or built-in model billing lookup.
 - Distribution: public GitHub installation metadata, `dsh-plugin` manifest,
   prerelease-aware DSH peer ranges, security guidance and Node 22/24 CI.
+- GitHub installs consume committed build artifacts without lifecycle-script
+  approval; npm publication still runs the complete `prepublishOnly` gate.

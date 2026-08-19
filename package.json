@@ -56,7 +56,7 @@
     "test:coverage": "vitest run --coverage",
     "test:integration": "vitest run test/integration.test.ts",
     "test:package": "vitest run test/package.test.ts",
-    "prepack": "pnpm build && pnpm typecheck && pnpm test"
+    "prepublishOnly": "pnpm build && pnpm typecheck && pnpm test"
   },
   "dependencies": {
     "ajv": "8.17.1",

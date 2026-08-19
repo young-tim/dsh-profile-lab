@@ -27,6 +27,7 @@ node scripts/generate-readme.mjs
 - Public GitHub repository has the `dsh-plugin` topic.
 - `dsh.bundle.patch` and `cordis.patch.yml` are present.
 - GitHub installation succeeds for both headless and web profiles.
+- GitHub installation requires no pnpm `allowBuilds` exception.
 - Repository is at least one day old and has at least ten commits.
 - CI passes on Node 22.19 and Node 24.
 - Description matches the three tools and CLI behavior exactly.
