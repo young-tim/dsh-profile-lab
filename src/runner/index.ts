@@ -116,6 +116,30 @@ const copyProfile = async (profile: string, home: string) => {
     throw new Error(`E_CONFIG: profile not found: ${profile}`);
   }
 };
+const readHostSettings = async (): Promise<Buffer | undefined> => {
+  const sourceHome = process.env.DSH_HOME ?? path.join(homedir(), ".dsh");
+  const source = path.join(sourceHome, "settings.yaml");
+  let stat;
+  try {
+    stat = await lstat(source);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw error;
+  }
+  if (stat.isSymbolicLink() || !stat.isFile())
+    throw new Error("E_SAFETY: unsafe DSH settings file");
+  return readFile(source);
+};
+const stageSettings = async (
+  home: string,
+  settings: Buffer | undefined,
+): Promise<string | undefined> => {
+  if (!settings) return;
+  const target = path.join(home, "settings.yaml");
+  await mkdir(home, { recursive: true });
+  await writeFile(target, settings, { mode: 0o600, flag: "wx" });
+  return target;
+};
 const stageCredentials = async (
   home: string,
   mode: "inherit" | "env-only" = "inherit",
@@ -381,6 +405,8 @@ export const run = async (
   const plan = cells(e, casesLoaded, patchHashes);
   if (plan.length > e.run.max_runs)
     throw new Error("E_CONFIG: max_runs exceeded");
+  const hostSettings = await readHostSettings();
+  const settingsHash = hostSettings ? sha(hostSettings) : undefined;
   const inputHash = sha(
     JSON.stringify({
       runner: 2,
@@ -389,6 +415,7 @@ export const run = async (
       patches: patchContents.map(sha),
       workspace: workspaceHash,
       judge: judgeHash,
+      settings: settingsHash,
     }),
   );
   try {
@@ -406,6 +433,7 @@ export const run = async (
     experiment_file: path.resolve(experimentFile),
     experiment: e,
     workspace_hash: workspaceHash,
+    ...(settingsHash ? { settings_hash: settingsHash } : {}),
     ...(judgeHash ? { judge_hash: judgeHash } : {}),
     case_hashes: Object.fromEntries(
       casesLoaded.map((caseItem) => [
@@ -481,12 +509,12 @@ export const run = async (
         };
         for (const name of e.run.env_allowlist ?? [])
           if (process.env[name] !== undefined) env[name] = process.env[name];
-        const stagedCredentials = await stageCredentials(
-          home,
-          e.run.credentials,
-        );
         const started = Date.now();
+        let stagedSettings: string | undefined;
+        let stagedCredentials: string | undefined;
         try {
+          stagedSettings = await stageSettings(home, hostSettings);
+          stagedCredentials = await stageCredentials(home, e.run.credentials);
           const output = await invoke(
             driverExecutable,
             args,
@@ -683,8 +711,11 @@ export const run = async (
             break;
           }
         } finally {
-          if (stagedCredentials)
-            await rm(stagedCredentials, { recursive: true, force: true });
+          await Promise.all(
+            [stagedSettings, stagedCredentials]
+              .filter((file): file is string => !!file)
+              .map((file) => rm(file, { recursive: true, force: true })),
+          );
         }
       }
       if (result) {

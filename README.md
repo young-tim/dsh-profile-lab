@@ -43,8 +43,10 @@ dsh plugin --profile web remove dsh-profile-lab
 - `@deepseek-ai/dsh` `0.1.0-rc.7`
 - 一个可运行的 DSH profile；默认 driver 是 PATH 中的 `dsh`
 
-真实运行可能调用模型并产生费用。默认的 `run.credentials: inherit` 会临时复用当前
-`DSH_HOME/.credentials.yaml`，无需再次配置 Key。CI 可使用 `credentials: env-only`
+真实运行可能调用模型并产生费用。每次运行会安全快照当前 `DSH_HOME/settings.yaml`，
+因此沿用用户已有的 Provider、base URL、模型列表和默认模型；默认的
+`run.credentials: inherit` 还会临时复用 `DSH_HOME/.credentials.yaml`，无需在案例中
+指定模型或 Key。CI 可使用 `credentials: env-only`
 并通过 `run.env_allowlist` 显式授权所需环境变量。
 
 ## 10-minute quick start
@@ -186,8 +188,10 @@ Policy 支持 `min_candidate_pass_rate`、`max_pass_rate_drop_pp`、
 ## Safety model
 
 - 每个 attempt 使用独立 workspace、DSH_HOME 和 patch 副本。
-- 默认从宿主 DSH_HOME 临时复制凭证，权限设为 `0600`，并在 attempt 的 `finally`
-  清理；凭证不会进入 manifest、journal 或报告。`credentials: env-only` 可彻底禁用继承。
+- 从宿主 DSH_HOME 快照 `settings.yaml`，让隔离子进程沿用 Provider、base URL 和默认模型；
+  配置哈希进入 manifest，快照在 attempt 的 `finally` 清理。
+- 默认从宿主 DSH_HOME 临时复制凭证，权限设为 `0600`，并与设置快照一同清理；凭证不会
+  进入 manifest、journal 或报告。`credentials: env-only` 可彻底禁用凭证文件继承。
 - 源 workspace、patch 和 judge 在运行后重新哈希；发生变化会失败关闭。
 - 拒绝 workspace 中的 symlink、socket、device、FIFO 等特殊文件。
 - 子进程使用 argv 数组和 `shell: false`；超时终止整个进程组并升级到 SIGKILL。

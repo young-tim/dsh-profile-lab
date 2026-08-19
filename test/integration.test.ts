@@ -19,7 +19,7 @@ describe("matrix runner", () => {
     ["default inheritance", undefined, true],
     ["env-only isolation", "env-only", false],
   ] as const)(
-    "uses %s credentials during execution and never retains them",
+    "snapshots host settings, uses %s credentials, and retains neither",
     async (_label, credentials, expected) => {
       const sourceHome = await mkdtemp(path.join(tmpdir(), "lab-dsh-home-"));
       const out = await mkdtemp(path.join(tmpdir(), "lab-credentials-out-"));
@@ -29,7 +29,12 @@ describe("matrix runner", () => {
       );
       const sourceCredentials = path.join(sourceHome, ".credentials.yaml");
       const secret = "token: test-only-secret\n";
+      const settings =
+        "agent-default-model:\n  provider: test-provider\n  model: test-model\n";
       await writeFile(sourceCredentials, secret, { mode: 0o640 });
+      await writeFile(path.join(sourceHome, "settings.yaml"), settings, {
+        mode: 0o640,
+      });
       await writeFile(log, "");
       const originalHome = process.env.DSH_HOME;
       process.env.DSH_HOME = sourceHome;
@@ -57,6 +62,9 @@ describe("matrix runner", () => {
           exists: boolean;
           content: string | null;
           mode: number | null;
+          settingsExists: boolean;
+          settingsContent: string | null;
+          settingsMode: number | null;
         }>;
         expect(observations).toHaveLength(4);
         expect(observations.every((item) => item.exists === expected)).toBe(
@@ -71,25 +79,34 @@ describe("matrix runner", () => {
               true,
             );
         }
+        expect(observations.every((item) => item.settingsExists)).toBe(true);
+        expect(
+          observations.every((item) => item.settingsContent === settings),
+        ).toBe(true);
+        if (process.platform !== "win32")
+          expect(
+            observations.every((item) => item.settingsMode === 0o600),
+          ).toBe(true);
         const cellRoots = await readdir(path.join(out, ".runs"));
-        for (const cellRoot of cellRoots)
-          await expect(
-            stat(
-              path.join(
-                out,
-                ".runs",
-                cellRoot,
-                "attempt-1",
-                "home",
-                ".credentials.yaml",
-              ),
-            ),
-          ).rejects.toThrow();
+        for (const cellRoot of cellRoots) {
+          const attemptHome = path.join(
+            out,
+            ".runs",
+            cellRoot,
+            "attempt-1",
+            "home",
+          );
+          for (const file of [".credentials.yaml", "settings.yaml"])
+            await expect(stat(path.join(attemptHome, file))).rejects.toThrow();
+        }
         expect(await readFile(sourceCredentials, "utf8")).toBe(secret);
         for (const artifact of ["manifest.json", "journal.json"])
           expect(
             await readFile(path.join(out, artifact), "utf8"),
           ).not.toContain(secret);
+        await expect(
+          readFile(path.join(out, "manifest.json"), "utf8"),
+        ).resolves.toContain('"settings_hash"');
       } finally {
         if (originalHome === undefined) delete process.env.DSH_HOME;
         else process.env.DSH_HOME = originalHome;
@@ -97,6 +114,23 @@ describe("matrix runner", () => {
       }
     },
   );
+  it("rejects a symlinked host settings file before launching cells", async () => {
+    const sourceHome = await mkdtemp(path.join(tmpdir(), "lab-settings-home-"));
+    await symlink("/tmp", path.join(sourceHome, "settings.yaml"));
+    const out = await mkdtemp(path.join(tmpdir(), "lab-settings-out-"));
+    const originalHome = process.env.DSH_HOME;
+    process.env.DSH_HOME = sourceHome;
+    try {
+      const e = await loadExperiment("examples/experiment.yml");
+      await expect(
+        run(e, out, path.resolve("fixtures/fake-dsh")),
+      ).rejects.toThrow("unsafe DSH settings file");
+      await expect(stat(path.join(out, ".runs"))).rejects.toThrow();
+    } finally {
+      if (originalHome === undefined) delete process.env.DSH_HOME;
+      else process.env.DSH_HOME = originalHome;
+    }
+  });
   it("resumes completed cells without duplicate invocations or source writes", async () => {
     const out = await mkdtemp(path.join(tmpdir(), "lab-out-"));
     const log = path.join(

@@ -102,6 +102,30 @@ const copyProfile = async (profile, home) => {
         throw new Error(`E_CONFIG: profile not found: ${profile}`);
     }
 };
+const readHostSettings = async () => {
+    const sourceHome = process.env.DSH_HOME ?? path.join(homedir(), ".dsh");
+    const source = path.join(sourceHome, "settings.yaml");
+    let stat;
+    try {
+        stat = await lstat(source);
+    }
+    catch (error) {
+        if (error.code === "ENOENT")
+            return;
+        throw error;
+    }
+    if (stat.isSymbolicLink() || !stat.isFile())
+        throw new Error("E_SAFETY: unsafe DSH settings file");
+    return readFile(source);
+};
+const stageSettings = async (home, settings) => {
+    if (!settings)
+        return;
+    const target = path.join(home, "settings.yaml");
+    await mkdir(home, { recursive: true });
+    await writeFile(target, settings, { mode: 0o600, flag: "wx" });
+    return target;
+};
 const stageCredentials = async (home, mode = "inherit") => {
     if (mode === "env-only")
         return;
@@ -304,6 +328,8 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
     const plan = cells(e, casesLoaded, patchHashes);
     if (plan.length > e.run.max_runs)
         throw new Error("E_CONFIG: max_runs exceeded");
+    const hostSettings = await readHostSettings();
+    const settingsHash = hostSettings ? sha(hostSettings) : undefined;
     const inputHash = sha(JSON.stringify({
         runner: 2,
         experiment: e,
@@ -311,6 +337,7 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
         patches: patchContents.map(sha),
         workspace: workspaceHash,
         judge: judgeHash,
+        settings: settingsHash,
     }));
     try {
         const previous = JSON.parse(await readFile(manifestFile, "utf8"));
@@ -327,6 +354,7 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
         experiment_file: path.resolve(experimentFile),
         experiment: e,
         workspace_hash: workspaceHash,
+        ...(settingsHash ? { settings_hash: settingsHash } : {}),
         ...(judgeHash ? { judge_hash: judgeHash } : {}),
         case_hashes: Object.fromEntries(casesLoaded.map((caseItem) => [
             caseItem.name,
@@ -393,9 +421,12 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
                 for (const name of e.run.env_allowlist ?? [])
                     if (process.env[name] !== undefined)
                         env[name] = process.env[name];
-                const stagedCredentials = await stageCredentials(home, e.run.credentials);
                 const started = Date.now();
+                let stagedSettings;
+                let stagedCredentials;
                 try {
+                    stagedSettings = await stageSettings(home, hostSettings);
+                    stagedCredentials = await stageCredentials(home, e.run.credentials);
                     const output = await invoke(driverExecutable, args, env, e.run.timeout_ms, workspace, signal);
                     let events = parseJsonl(output.text);
                     let corruptFrames = 0;
@@ -554,8 +585,9 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
                     }
                 }
                 finally {
-                    if (stagedCredentials)
-                        await rm(stagedCredentials, { recursive: true, force: true });
+                    await Promise.all([stagedSettings, stagedCredentials]
+                        .filter((file) => !!file)
+                        .map((file) => rm(file, { recursive: true, force: true })));
                 }
             }
             if (result) {

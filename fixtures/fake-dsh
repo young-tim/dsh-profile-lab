@@ -11,6 +11,7 @@ if (process.env.FAKE_CREDENTIAL_LOG) {
     process.env.DSH_HOME ?? "",
     ".credentials.yaml",
   );
+  const settings = path.join(process.env.DSH_HOME ?? "", "settings.yaml");
   appendFileSync(
     process.env.FAKE_CREDENTIAL_LOG,
     JSON.stringify({
@@ -19,6 +20,13 @@ if (process.env.FAKE_CREDENTIAL_LOG) {
         ? readFileSync(credentials, "utf8")
         : null,
       mode: existsSync(credentials) ? statSync(credentials).mode & 0o777 : null,
+      settingsExists: existsSync(settings),
+      settingsContent: existsSync(settings)
+        ? readFileSync(settings, "utf8")
+        : null,
+      settingsMode: existsSync(settings)
+        ? statSync(settings).mode & 0o777
+        : null,
     }) + "\n",
   );
 }
