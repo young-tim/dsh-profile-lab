@@ -13,6 +13,7 @@
 - Product acceptance: deterministic 20-cell run passes strict report schema;
   pass/regression policies return 0/1 and repeated report hashes are identical.
 - Publication: public repository metadata, DSH topics, peer dependency ranges,
-  GitHub installation docs, security policy and Node 22/24 CI are configured.
+  GitHub installation docs and security policy are configured. Fresh headless
+  and web profiles install from GitHub and load the bundle; Node 22/24 CI passes.
 - Residual compatibility risk: Node 22 and Linux are declared but were not
   available in this macOS/Node 24 local acceptance environment.

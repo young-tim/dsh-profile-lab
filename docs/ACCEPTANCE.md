@@ -40,6 +40,9 @@ coverage statements/branches/functions/lines      -> 91.93/86.28/93.91/93.33
 pnpm test:integration                              -> 20 passed
 pnpm test:package                                  -> 3 passed
 official base/candidate dump-config, isolated homes -> exit 0 / exit 0
+GitHub install into fresh headless/web profiles     -> exit 0 / exit 0
+installed profile dump-config contains plugin row  -> yes / yes
+GitHub Actions Node 22.19 / Node 24 matrix          -> success / success
 node dist/cli.js run ...fake-dsh-session...        -> 20 cells, exit 0
 node dist/cli.js compare ...                       -> reports written, exit 0
 ajv report schema validation                       -> valid, exit 0
