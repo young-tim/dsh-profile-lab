@@ -121,7 +121,7 @@ describe("config and assertions", () => {
       "schema_version: 1\nname: x\ncases_dir: c\nworkspace_template: w\nbaseline: a\nvariants: [{id: a, profile: h, patch: a.yml}, {id: b, profile: h, patch: b.yml}]\nrepetitions: 1\nrun: {concurrency: 1, timeout_ms: 1, max_runs: 2, max_total_tokens: 0}\n";
     await writeFile(path.join(d, "e.yml"), common + "extra: x\n");
     await expect(loadExperiment(path.join(d, "e.yml"))).rejects.toThrow(
-      "unknown top-level field",
+      "schema validation failed",
     );
     await writeFile(
       path.join(d, "e.yml"),

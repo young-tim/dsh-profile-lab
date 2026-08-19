@@ -1,9 +1,11 @@
 # Runtime dependencies
 
-`yaml` provides safe YAML document parsing with duplicate-key detection.
-`@deepseek-ai/dsh-tools` is the official DSH RC tool registry contract used to
-register the three Cordis model tools. Node's standard library handles schemas,
-hashing, processes, filesystem isolation, reporting, and HTML escaping.
+`yaml` provides safe YAML parsing with duplicate-key and alias controls. `ajv`
+validates complete experiment and report contracts against Draft 2020-12 JSON
+Schemas. `@deepseek-ai/dsh-session` decodes official packed session records, and
+`@deepseek-ai/dsh-tools` supplies the official tool registration contract.
 
-The development-only `file:` self-reference exists solely to let `pnpm exec`
-resolve the package's own CLI from a clean checkout; it is not shipped.
+Node's standard library handles hashing, zstd frames, process groups, filesystem
+isolation, atomic persistence, reporting, redaction and HTML escaping. The
+repository has no `file:` self-dependency; source-tree acceptance invokes
+`node dist/cli.js`, while an installed tarball exposes `dsh-profile-lab` normally.

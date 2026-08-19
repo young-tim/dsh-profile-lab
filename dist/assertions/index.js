@@ -1,4 +1,4 @@
-import { finalOutput, toolNames, } from "../dsh-adapter/index.js";
+import { finalOutput, toolNames, tokenUsage, } from "../dsh-adapter/index.js";
 const list = (x) => Array.isArray(x) ? x.map(String) : typeof x === "string" ? [x] : [];
 const contains = (text, want) => list(want).every((x) => text.includes(x));
 export const evaluateCase = (c, events) => {
@@ -55,15 +55,16 @@ export const evaluateCase = (c, events) => {
         failures.push(fail("tool_result_contains", a.tool_result_contains, encoded("tool/result")));
     if (a.max_steps !== undefined &&
         events.filter((e) => e.type === "step/end").length > Number(a.max_steps))
-        failures.push(fail("max_steps", a.max_steps, events.length));
+        failures.push(fail("max_steps", a.max_steps, events.filter((e) => e.type === "step/end").length));
     if (a.max_tokens !== undefined) {
-        const tokens = d.reduce((n, e) => n +
-            Number(e.usage?.input ?? 0) +
-            Number(e.usage?.output ?? 0), 0);
+        const usage = tokenUsage(events);
+        const tokens = usage.input + usage.output + usage.reasoning;
         if (tokens > Number(a.max_tokens))
             failures.push(fail("max_tokens", a.max_tokens, tokens));
     }
-    if (a.no_tool_errors === true && events.some((e) => e.type === "tool/error"))
+    if (a.no_tool_errors === true &&
+        events.some((e) => e.type === "tool/error" ||
+            (e.type === "tool/result" && Boolean((e.data ?? e).error))))
         failures.push(fail("no_tool_errors", true, false));
     return { ok: !failures.length, failures };
 };

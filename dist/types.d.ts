@@ -39,8 +39,24 @@ export type Experiment = {
         output_per_million: number;
     }>;
     gate?: GatePolicy;
+    judge?: {
+        command: string;
+        timeout_ms: number;
+        env_allowlist?: string[];
+    };
 };
 export type CellStatus = "pass" | "fail" | "error" | "cancelled";
+export type Attempt = {
+    attempt: number;
+    status: CellStatus;
+    duration_ms: number;
+    evidence: string;
+    turn_reason?: string;
+    diagnostic?: string;
+    input_tokens?: number;
+    output_tokens?: number;
+    reasoning_tokens?: number;
+};
 export type Cell = {
     id: string;
     variant: string;
@@ -56,11 +72,24 @@ export type Cell = {
     output_tokens: number;
     reasoning_tokens: number;
     cache_tokens: number;
+    cache_read_tokens?: number;
+    cache_write_tokens?: number;
     final_output_hash: string;
     evidence: string;
+    corrupt_frames?: number;
+    corrupt_records?: number;
     assertion_failures?: string[];
     turn_reason?: string;
     cost?: number;
+    attempt_details?: Attempt[];
+    judge?: {
+        pass: boolean;
+        reason?: string;
+        input_tokens: number;
+        output_tokens: number;
+        reasoning_tokens: number;
+        evidence: string;
+    };
 };
 export type Summary = {
     variant: string;

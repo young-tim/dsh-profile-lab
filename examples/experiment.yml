@@ -7,4 +7,9 @@ variants:
   - { id: base, profile: headless, patch: variants/base.yml }
   - { id: candidate, profile: headless, patch: variants/candidate.yml }
 repetitions: 5
-run: { concurrency: 2, timeout_ms: 1000, max_runs: 20, max_total_tokens: 1000 }
+run:
+  concurrency: 2
+  timeout_ms: 600000
+  max_runs: 20
+  max_total_tokens: 100000
+  env_allowlist: [DEEPSEEK_API_KEY]

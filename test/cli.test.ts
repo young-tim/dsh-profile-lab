@@ -31,7 +31,7 @@ describe("CLI application", () => {
     err.mockRestore();
   });
   it("rejects invalid commands", async () => {
-    await expect(main(["run"])).rejects.toThrow("output required");
+    await expect(main(["run"])).rejects.toThrow("run requires one EXPERIMENT");
     await expect(main(["wat", "--output", "x"])).rejects.toThrow(
       "unknown command",
     );

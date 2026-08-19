@@ -1,1 +1,6 @@
-Example isolated workspace.
+# Profile Lab acceptance workspace
+
+Required markers:
+
+- alpha: PROFILE_LAB_ALPHA
+- beta: PROFILE_LAB_BETA

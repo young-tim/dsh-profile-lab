@@ -25,7 +25,9 @@ export const summarize = (
     (c) => c.variant === variant && (!caseName || c.case === caseName),
   );
   const pass = a.filter((c) => c.status === "pass").length,
-    error = a.filter((c) => c.status === "error").length,
+    error = a.filter(
+      (c) => c.status === "error" || c.status === "cancelled",
+    ).length,
     fail = a.filter((c) => c.status === "fail").length;
   const n = (f: (c: Cell) => number) => a.map(f);
   return {

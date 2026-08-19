@@ -1,44 +1,59 @@
 # Acceptance evidence
 
-Environment: Node v24.12.0, pnpm 11.9.0, `@deepseek-ai/dsh` 0.1.0-rc.7. The frozen checklist SHA-256 is `d54a9c58ace0396d14c1d2898d1832ae2deccdfa9affce6eb9831af7438f4ec4`.
+Accepted 2026-08-19 on macOS, Node v24.12.0, pnpm 11.9.0 and
+`@deepseek-ai/dsh` 0.1.0-rc.7. The frozen implementation checklist SHA-256
+remains `d54a9c58ace0396d14c1d2898d1832ae2deccdfa9affce6eb9831af7438f4ec4`.
 
-## Current evidence
+## Product verdict
 
-- P0 CLI/config: strict command parsing, schema validation and experiment-relative case loading are exercised by `test/mvp-contracts.test.ts` and CLI tests.
-- P0 execution: `examples/experiment.yml` creates 2 variants × 2 cases × 5 repetitions; fake driver invocation returned exactly 20 journal/report cells.
-- P0 event/assertion: official `{type,seq,time,data}` message/end fixtures and structural assertion pass/fail paths are covered by 24 contract tests.
-- P0 event/assertion addition: `test/zstd.test.ts` proves JSONL and zstd fixtures project identical metrics; corrupt zstd projects an error. `test/assertions.test.ts` covers tool argument/result assertions and judge short-circuiting.
-- P0 runner/safety: isolated copied workspaces, symlink rejection, bounded concurrency, timeout evidence, budget, abort and journal resume are covered by integration tests.
-- P0 reports/gate/tools: deterministic report render, policy 0/1 behavior and three registered DSH tools are covered by decision/package/plugin tests; plugin disposal invokes each official registration's unregister function.
-- P1 package: `test:package` builds, creates a lifecycle-disabled tarball, installs it in a temporary package and executes its linked CLI. The official RC `dsh --profile headless --patch cordis.patch.yml --dump-config` smoke asserts the `dsh-profile-lab` overlay row.
-- P0 runner addition: budget exhaustion writes `run-state.json` and produces `incomplete: true` in reports/exit code 3; changed inputs reject resume through a manifest hash. A spawned CLI receives SIGINT and returns 3 with durable `reason: cancelled`.
+The local core product is release-acceptable. A user can validate an experiment,
+run a real DSH profile/patch matrix, recover or resume durable evidence, compare
+baseline and candidates, inspect three offline report formats and apply a policy
+gate. Incomplete runs cannot pass either CLI or plugin gate.
 
-## Failure → implementation → passing proof
+Out of scope: web/cloud/team features, automatic plugin lifecycle management,
+remote billing lookup and a bundled model-based judge. These are ecosystem
+extensions and do not break the local experiment-to-decision loop.
 
-1. Concurrent matrix workers overwrote `journal.json` (19 rather than 20 cells). The journal now chains atomic writes; restart smoke reports exactly 20.
-2. Cases were resolved from process CWD rather than the experiment directory. Fixtures now live under `examples/`; CLI and integration matrix tests pass.
-3. `profile_lab_gate` always threw. It now requires an explicit policy and evaluates the shared comparison result; plugin service tests pass.
-4. Strict report-schema validation initially rejected leaked `source` fields on cells. Cell projection now emits only public measurement fields; `pnpm exec ajv validate -s schemas/report.schema.json -d .profile-lab/matrix/report.json --spec=draft2020` passes.
-5. A CLI SIGINT previously left worker dispatch without a durable cancellation state. The CLI now passes an abort signal to the shared runner; `test/integration.test.ts` spawns the built CLI, sends SIGINT, and observes exit 3 plus `run-state.json` `reason: cancelled`.
+## Verified behavior
+
+- Official argv: `dsh --profile <profile> --patch <patch> <prompt>` runs from an
+  isolated workspace with an isolated `DSH_HOME` per attempt.
+- Official evidence: packed records, nested assistant messages, usage fields,
+  multi-frame zstd and recoverable corrupt tails are projected and audited.
+- Reliability: retries retain every attempt; timeout/SIGINT terminate process
+  groups; budget and cancellation persist incomplete state; unchanged cells resume.
+- Decisions: structural assertions and optional judge are fail-closed; reports
+  include overall and per-case baseline deltas, pricing/Pareto when configured,
+  failure details, input hashes and incomplete state.
+- Plugin: run defaults to `dsh`; compare/gate can continue from only the result
+  directory; all candidates are gated; unload aborts active runs and unregisters.
+- Package: a tarball installed outside the repository completes
+  schema/run/compare/gate, and the official DSH loader accepts `cordis.patch.yml`.
 
 ## Commands observed
 
 ```text
-pnpm install --frozen-lockfile → 0
-pnpm format:check  → 0
-pnpm lint          → 0
-pnpm typecheck     → 0
-pnpm test          → 8 files, 96 tests passed
-pnpm test:coverage → statements 92.94%, branches 86.33%, functions 95.54%, lines 93.96%
-pnpm build         → 0
-pnpm test:integration → 9 tests passed
-pnpm test:package  → 3 tests passed
-pnpm exec dsh-profile-lab run examples/experiment.yml --driver fixtures/fake-dsh --output .profile-lab/matrix --restart → run complete: 20 cells
-pnpm exec dsh-profile-lab compare .profile-lab/matrix → reports written
-pnpm pack --pack-destination .profile-lab/package → tarball created after prepack build/typecheck/test
-temporary in-repository install → `pnpm exec dsh-profile-lab schema --check ...` → schema valid
-gate pass policy / regression policy / missing output / no-end driver → exit 0 / 1 / 2 / 3
-strict report schema → `ajv ... --spec=draft2020` → valid; repeated compare report SHA-256 values are identical (`21662f767abb11793f164ce0c8a120051b75b26e6bbaa5c00bf6b20da98ac01e`)
-matrix assertion → 20 cells, 2 variants, 2 cases
-package artifact → `.profile-lab/package/dsh-profile-lab-0.1.0.tgz` SHA-256 `f4c38f941dd0b8108858c00a26fb369f887b91b41e983b93e3ded2cab095bf90`
+pnpm format:check / lint / typecheck / build       -> 0
+pnpm test:coverage                                 -> 9 files, 139 passed
+coverage statements/branches/functions/lines      -> 91.93/86.28/93.91/93.33
+pnpm test:integration                              -> 20 passed
+pnpm test:package                                  -> 3 passed
+official base/candidate dump-config, isolated homes -> exit 0 / exit 0
+node dist/cli.js run ...fake-dsh-session...        -> 20 cells, exit 0
+node dist/cli.js compare ...                       -> reports written, exit 0
+ajv report schema validation                       -> valid, exit 0
+gate policy-pass.yml / policy.yml                  -> exit 0 / exit 1
 ```
+
+Repeated compare produced identical SHA-256 values:
+
+```text
+report.json  3f354c7f2e83146306fba92d01d8fb4303cae414999165ab878d50733641d553
+report.md    9fba64da0dbae1535a59f9b9b34717e992afdbd220ae0a081a6e009e5b370871
+report.html  3cebd28b650faca3a8ae11ab6d3bd24c9e0578e08c11c86c8cfd99bc2b9d998a
+```
+
+Acceptance artifacts are in `.profile-lab/release-acceptance/`. Raw DSH session
+evidence is intentionally retained there; publish the sanitized reports, not the
+raw `.runs` directory, unless its contents have been reviewed.

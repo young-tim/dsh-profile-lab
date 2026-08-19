@@ -15,9 +15,9 @@
   "properties": {
     "schema_version": { "const": 1 },
     "name": { "type": "string", "minLength": 1 },
-    "cases_dir": { "type": "string" },
-    "workspace_template": { "type": "string" },
-    "baseline": { "type": "string" },
+    "cases_dir": { "type": "string", "minLength": 1 },
+    "workspace_template": { "type": "string", "minLength": 1 },
+    "baseline": { "type": "string", "minLength": 1 },
     "variants": {
       "type": "array",
       "minItems": 2,
@@ -26,9 +26,9 @@
         "additionalProperties": false,
         "required": ["id", "profile", "patch"],
         "properties": {
-          "id": { "type": "string" },
-          "profile": { "type": "string" },
-          "patch": { "type": "string" }
+          "id": { "type": "string", "minLength": 1 },
+          "profile": { "type": "string", "minLength": 1 },
+          "patch": { "type": "string", "minLength": 1 }
         }
       }
     },
@@ -41,10 +41,57 @@
         "concurrency": { "type": "integer", "minimum": 1, "maximum": 8 },
         "timeout_ms": { "type": "integer", "minimum": 1 },
         "max_runs": { "type": "integer", "minimum": 1 },
-        "max_total_tokens": { "type": "integer", "minimum": 0 }
+        "max_total_tokens": { "type": "integer", "minimum": 0 },
+        "env_allowlist": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
+        }
       }
     },
-    "pricing": { "type": "object" },
-    "gate": { "type": "object" }
+    "pricing": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["input_per_million", "output_per_million"],
+        "properties": {
+          "input_per_million": { "type": "number", "minimum": 0 },
+          "output_per_million": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "min_candidate_pass_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "max_pass_rate_drop_pp": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "max_median_token_increase_pct": { "type": "number", "minimum": 0 },
+        "max_error_rate": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "judge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "timeout_ms"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1 },
+        "timeout_ms": { "type": "integer", "minimum": 1 },
+        "env_allowlist": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }
+        }
+      }
+    }
   }
 }

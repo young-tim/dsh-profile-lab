@@ -1,1 +1,4 @@
-bundle: []
+- id: system-prompt
+  config:
+    persona: >-
+      You are a concise coding agent. Verify the requested result before answering.

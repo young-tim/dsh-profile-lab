@@ -1,5 +1,5 @@
 name: beta
-prompt: solve beta
+prompt: Read README in the workspace and return the exact marker for beta.
 assert:
   turn_end: completed
-  output_contains: pass
+  output_contains: PROFILE_LAB_BETA

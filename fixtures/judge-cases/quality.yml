@@ -1,0 +1,6 @@
+name: judged-quality
+prompt: solve judged task
+assert:
+  turn_end: completed
+  output_judge:
+    criterion: response must equal pass

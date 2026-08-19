@@ -1,0 +1,5 @@
+name: retry
+prompt: retry task
+retries: 1
+assert:
+  output_contains: pass

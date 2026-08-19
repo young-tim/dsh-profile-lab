@@ -1,0 +1,11 @@
+schema_version: 1
+name: judged-output
+cases_dir: judge-cases
+workspace_template: repo
+baseline: base
+variants:
+  - { id: base, profile: headless, patch: variants/base.yml }
+  - { id: candidate, profile: headless, patch: variants/candidate.yml }
+repetitions: 1
+run: { concurrency: 1, timeout_ms: 1000, max_runs: 2, max_total_tokens: 100 }
+judge: { command: fake-judge, timeout_ms: 5000 }

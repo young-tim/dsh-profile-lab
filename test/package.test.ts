@@ -27,15 +27,14 @@ describe("package surface", () =>
       output: out,
       driver: path.resolve("fixtures/fake-dsh"),
     });
-    await expect(
-      tools[1]!.execute({ experiment: "examples/experiment.yml", output: out }),
-    ).resolves.toMatchObject({ version: 1 });
+    await expect(tools[1]!.execute({ output: out })).resolves.toMatchObject({
+      version: 1,
+    });
     await expect(
       tools[2]!.execute({ experiment: "examples/experiment.yml", output: out }),
     ).rejects.toThrow('missing required property "policy"');
     await expect(
       tools[2]!.execute({
-        experiment: "examples/experiment.yml",
         output: out,
         policy: { min_candidate_pass_rate: 0 },
       }),
@@ -93,5 +92,36 @@ describe("packed package", () => {
       { cwd: install },
     );
     expect(result.stdout).toContain("schema valid");
+    const output = path.join(install, "result");
+    const cli = (args: string[]) =>
+      execute("pnpm", ["exec", "dsh-profile-lab", ...args], { cwd: install });
+    await cli([
+      "run",
+      path.resolve("examples/experiment.yml"),
+      "--driver",
+      path.resolve("fixtures/fake-dsh"),
+      "--output",
+      output,
+    ]);
+    await cli(["compare", output]);
+    await expect(
+      readFile(path.join(output, "report.json"), "utf8"),
+    ).resolves.toContain('"input_hash"');
+    await expect(
+      cli(["gate", output, "--policy", path.resolve("examples/policy.yml")]),
+    ).rejects.toMatchObject({ code: 1 });
+    const dshHome = await mkdtemp(
+      path.join(tmpdir(), "profile-lab-installed-home-"),
+    );
+    const installedPatch = path.join(
+      install,
+      "node_modules/dsh-profile-lab/cordis.patch.yml",
+    );
+    const loaded = await execute(
+      path.resolve("node_modules/.bin/dsh"),
+      ["--profile", "headless", "--patch", installedPatch, "--dump-config"],
+      { cwd: install, env: { ...process.env, DSH_HOME: dshHome } },
+    );
+    expect(loaded.stdout).toContain("id: dsh-profile-lab");
   }, 30_000);
 });

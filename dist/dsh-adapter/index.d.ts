@@ -2,7 +2,7 @@ import type { Cell } from "../types.js";
 export type SessionEvent = {
     type: string;
     seq?: number;
-    time?: string;
+    time?: string | number;
     data?: Record<string, unknown>;
     status?: string;
     text?: string;
@@ -13,6 +13,11 @@ export type SessionEvent = {
         cache?: number;
         cacheRead?: number;
         cacheWrite?: number;
+        inputTokens?: number;
+        outputTokens?: number;
+        reasoningTokens?: number;
+        cacheReadTokens?: number;
+        cacheWriteTokens?: number;
     };
     duration_ms?: number;
     steps?: number;
@@ -24,9 +29,18 @@ export declare const parseJsonl: (text: string) => SessionEvent[];
 export type SessionRead = {
     events: SessionEvent[];
     corrupt_frames: number;
+    corrupt_records: number;
 };
 export declare const parseSessionBuffer: (buffer: Buffer, compressed?: boolean) => SessionRead;
+export declare const readSessionDetailed: (file: string) => Promise<SessionRead>;
 export declare const readSession: (file: string) => Promise<SessionEvent[]>;
+export declare const tokenUsage: (events: SessionEvent[]) => {
+    input: number;
+    output: number;
+    reasoning: number;
+    cacheRead: number;
+    cacheWrite: number;
+};
 export declare const finalOutput: (events: SessionEvent[]) => string;
 export declare const toolNames: (events: SessionEvent[]) => string[];
 export declare const projectCell: (id: Omit<Cell, "status" | "duration_ms" | "steps" | "tool_calls" | "tool_errors" | "input_tokens" | "output_tokens" | "reasoning_tokens" | "cache_tokens" | "final_output_hash" | "evidence" | "attempts">, events: SessionEvent[], evidence: string) => Cell;

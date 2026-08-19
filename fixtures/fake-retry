@@ -1,0 +1,19 @@
+#!/usr/bin/env node
+const attempt = process.cwd().match(/attempt-(\d+)/)?.[1];
+const output = attempt === "1" ? "retry me" : "pass";
+console.log(
+  JSON.stringify({
+    type: "assistant/message",
+    data: {
+      message: { role: "assistant", content: [{ type: "text", text: output }] },
+      usage: { inputTokens: 2, outputTokens: 1 },
+    },
+  }),
+);
+console.log(JSON.stringify({ type: "step/end", data: {} }));
+console.log(
+  JSON.stringify({
+    type: "turn/end",
+    data: { reason: { kind: "completed" }, duration_ms: 1, steps: 1 },
+  }),
+);

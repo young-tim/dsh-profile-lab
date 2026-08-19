@@ -12,7 +12,7 @@ type RunState = {
     reason?: "budget" | "cancelled";
 };
 export declare const readRunState: (base: string) => Promise<RunState>;
-export declare const cells: (e: Experiment, cases?: Case[]) => {
+export declare const cells: (e: Experiment, cases?: Case[], variantHashes?: Record<string, string>) => {
     id: string;
     variant: string;
     case: string;

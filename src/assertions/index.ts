@@ -1,6 +1,7 @@
 import {
   finalOutput,
   toolNames,
+  tokenUsage,
   type SessionEvent,
 } from "../dsh-adapter/index.js";
 import type { Case } from "../types.js";
@@ -108,19 +109,27 @@ export const evaluateCase = (
     a.max_steps !== undefined &&
     events.filter((e) => e.type === "step/end").length > Number(a.max_steps)
   )
-    failures.push(fail("max_steps", a.max_steps, events.length));
-  if (a.max_tokens !== undefined) {
-    const tokens = d.reduce(
-      (n, e) =>
-        n +
-        Number((e.usage as Record<string, unknown> | undefined)?.input ?? 0) +
-        Number((e.usage as Record<string, unknown> | undefined)?.output ?? 0),
-      0,
+    failures.push(
+      fail(
+        "max_steps",
+        a.max_steps,
+        events.filter((e) => e.type === "step/end").length,
+      ),
     );
+  if (a.max_tokens !== undefined) {
+    const usage = tokenUsage(events);
+    const tokens = usage.input + usage.output + usage.reasoning;
     if (tokens > Number(a.max_tokens))
       failures.push(fail("max_tokens", a.max_tokens, tokens));
   }
-  if (a.no_tool_errors === true && events.some((e) => e.type === "tool/error"))
+  if (
+    a.no_tool_errors === true &&
+    events.some(
+      (e) =>
+        e.type === "tool/error" ||
+        (e.type === "tool/result" && Boolean((e.data ?? e).error)),
+    )
+  )
     failures.push(fail("no_tool_errors", true, false));
   return { ok: !failures.length, failures };
 };

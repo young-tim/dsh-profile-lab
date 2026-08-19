@@ -14,7 +14,7 @@ export const wilson = (success, total) => {
 export const totalTokens = (c) => c.input_tokens + c.output_tokens + c.reasoning_tokens;
 export const summarize = (cells, variant, caseName) => {
     const a = cells.filter((c) => c.variant === variant && (!caseName || c.case === caseName));
-    const pass = a.filter((c) => c.status === "pass").length, error = a.filter((c) => c.status === "error").length, fail = a.filter((c) => c.status === "fail").length;
+    const pass = a.filter((c) => c.status === "pass").length, error = a.filter((c) => c.status === "error" || c.status === "cancelled").length, fail = a.filter((c) => c.status === "fail").length;
     const n = (f) => a.map(f);
     return {
         variant,

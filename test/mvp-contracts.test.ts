@@ -249,4 +249,27 @@ describe("plugin service boundary", () => {
     const { profile_lab_gate } = await import("../src/plugin/index.js");
     await expect(profile_lab_gate()).rejects.toThrow("explicit policy");
   });
+  it("never passes an incomplete result through the plugin gate", async () => {
+    const out = await mkdtemp(path.join(tmpdir(), "plugin-incomplete-"));
+    const e = await loadExperiment("examples/experiment.yml");
+    await writeFile(path.join(out, "journal.json"), JSON.stringify([]));
+    await writeFile(
+      path.join(out, "manifest.json"),
+      JSON.stringify({ experiment: e }),
+    );
+    await writeFile(
+      path.join(out, "run-state.json"),
+      JSON.stringify({ version: 1, incomplete: true, reason: "budget" }),
+    );
+    const { profile_lab_gate } = await import("../src/plugin/index.js");
+    await expect(
+      profile_lab_gate({
+        output: out,
+        policy: { min_candidate_pass_rate: 0 },
+      }),
+    ).resolves.toMatchObject({
+      verdict: "incomplete",
+      reasons: ["run is incomplete"],
+    });
+  });
 });

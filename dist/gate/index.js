@@ -1,3 +1,25 @@
+const policyKeys = new Set([
+    "min_candidate_pass_rate",
+    "max_pass_rate_drop_pp",
+    "max_median_token_increase_pct",
+    "max_error_rate",
+]);
+export const validatePolicy = (value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value))
+        throw new Error("E_CONFIG: policy must be an object");
+    const policy = value;
+    for (const [key, raw] of Object.entries(policy)) {
+        if (!policyKeys.has(key))
+            throw new Error(`E_CONFIG: unknown policy field: ${key}`);
+        if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0)
+            throw new Error(`E_CONFIG: invalid policy value: ${key}`);
+        if (["min_candidate_pass_rate", "max_error_rate"].includes(key) && raw > 1)
+            throw new Error(`E_CONFIG: invalid policy value: ${key}`);
+        if (key === "max_pass_rate_drop_pp" && raw > 100)
+            throw new Error(`E_CONFIG: invalid policy value: ${key}`);
+    }
+    return policy;
+};
 export const gate = (base, candidate, policy) => {
     const reasons = [];
     if (policy.min_candidate_pass_rate !== undefined &&
@@ -17,3 +39,7 @@ export const gate = (base, candidate, policy) => {
         reasons.push("error rate exceeds policy");
     return reasons;
 };
+export const gateCandidates = (base, candidates, policy) => candidates.map((candidate) => ({
+    variant: candidate.variant,
+    reasons: gate(base, candidate, policy),
+}));

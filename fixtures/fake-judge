@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", (chunk) => {
+  input += chunk;
+});
+process.stdin.on("end", () => {
+  const mode = process.env.FAKE_JUDGE_MODE;
+  if (mode === "exit") {
+    console.error("Authorization: secret-value");
+    process.exit(9);
+  }
+  if (mode === "invalid-json") {
+    console.log("not-json");
+    return;
+  }
+  if (mode === "missing-pass") {
+    console.log(JSON.stringify({ reason: "missing verdict" }));
+    return;
+  }
+  const request = JSON.parse(input);
+  const pass = request.output === "pass";
+  const finish = () =>
+    console.log(
+      JSON.stringify({
+        pass,
+        reason: pass ? "meets rubric" : "does not meet rubric",
+        usage:
+          mode === "invalid-usage"
+            ? { inputTokens: -1 }
+            : { inputTokens: 4, outputTokens: 2, reasoningTokens: 1 },
+      }),
+    );
+  if (mode === "timeout") setTimeout(finish, 200);
+  else finish();
+});

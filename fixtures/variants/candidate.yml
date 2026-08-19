@@ -1,1 +1,3 @@
-{}
+- id: system-prompt
+  config:
+    persona: You are the deterministic candidate fixture.

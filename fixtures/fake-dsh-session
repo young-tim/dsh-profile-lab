@@ -1,0 +1,84 @@
+#!/usr/bin/env node
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { zstdCompressSync } from "node:zlib";
+
+const args = process.argv.slice(2);
+const value = (flag) => args[args.indexOf(flag) + 1];
+const patch = value("--patch");
+const prompt = args.at(-1);
+if (!process.env.DSH_HOME || !value("--profile") || !patch || !prompt)
+  process.exit(2);
+
+const base = path.basename(patch).startsWith("base");
+const expected = prompt.includes("alpha")
+  ? "PROFILE_LAB_ALPHA"
+  : prompt.includes("beta")
+    ? "PROFILE_LAB_BETA"
+    : "pass";
+const now = Date.now();
+const rows = [
+  {
+    type: "session",
+    version: 1,
+    id: "session-fixture",
+    cwd: process.cwd(),
+    createdAt: now,
+    delegationDepth: 0,
+  },
+  { type: "turn/start", seq: 0, time: now, data: { turn: 1 } },
+  { type: "step/start", seq: 1, time: now + 1, data: { turn: 1, step: 1 } },
+  {
+    type: "assistant/message",
+    seq: 2,
+    time: now + 2,
+    data: {
+      turn: 1,
+      step: 1,
+      message: {
+        id: "message-1",
+        role: "assistant",
+        source: { kind: "model", provider: "fixture", model: "fixture" },
+        content: [{ type: "text", text: base ? expected : "regression" }],
+      },
+      usage: {
+        inputTokens: 11,
+        outputTokens: 7,
+        reasoningTokens: 3,
+        cacheReadTokens: 5,
+        cacheWriteTokens: 2,
+      },
+    },
+  },
+  { type: "step/end", seq: 3, time: now + 3, data: { turn: 1, step: 1 } },
+  {
+    type: "turn/end",
+    seq: 4,
+    time: now + 9,
+    data: { turn: 1, reason: { kind: "completed" } },
+  },
+];
+const directory = path.join(
+  process.env.DSH_HOME,
+  "sessions",
+  "fixture-project",
+  "session-fixture",
+);
+mkdirSync(directory, { recursive: true });
+writeFileSync(
+  path.join(directory, "session.jsonl.zstd"),
+  Buffer.concat([
+    ...rows.map((row) =>
+      zstdCompressSync(Buffer.from(`${JSON.stringify(row)}\n`)),
+    ),
+    ...(process.env.FAKE_CORRUPT_TAIL
+      ? [
+          Buffer.concat([
+            Buffer.from([0x28, 0xb5, 0x2f, 0xfd]),
+            Buffer.from("truncated"),
+          ]),
+        ]
+      : []),
+  ]),
+);
+console.log(base ? "pass" : "regression");

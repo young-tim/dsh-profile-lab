@@ -91,6 +91,7 @@ describe("decision services", () => {
     expect(await readFile(path.join(d, "report.html"), "utf8")).toBe(a[2]);
     expect(a[2]).toContain("&lt;unsafe&gt;");
     expect(a[1]).toContain("## Reproduce");
+    expect(a[2]).toContain("Per-case comparisons");
   });
 });
 
@@ -109,6 +110,7 @@ describe("explicit pricing decisions", () => {
     } as unknown as Experiment;
     const result = await report(d, e, [cell("base"), cell("candidate")]);
     expect(result.pareto).toEqual([]);
+    expect(result.per_case_comparisons).toHaveLength(1);
     expect(result.variants.every((x) => x.cost === "unavailable")).toBe(true);
   });
   it("computes explicit local pricing and Pareto members", async () => {
@@ -125,6 +127,68 @@ describe("explicit pricing decisions", () => {
     const result = await report(d, e, [cell("base"), cell("candidate")]);
     expect(result.variants.map((x) => x.cost)).toEqual([1, 1]);
     expect(result.pareto).toEqual(["base", "candidate"]);
+  });
+  it("reports zero-token deltas, failures, partial pricing and manifest hashes", async () => {
+    const d = await mkdtemp(path.join(tmpdir(), "report-boundaries-"));
+    const e = {
+      schema_version: 1,
+      name: "boundaries",
+      baseline: "base",
+      cases_dir: "cases",
+      workspace_template: "repo",
+      repetitions: 1,
+      run: {
+        concurrency: 1,
+        timeout_ms: 1,
+        max_runs: 2,
+        max_total_tokens: 10,
+        env_allowlist: ["TOKEN"],
+      },
+      variants: [
+        { id: "base", profile: "headless", patch: "base.yml" },
+        { id: "candidate", profile: "headless", patch: "candidate.yml" },
+      ],
+      pricing: {
+        base: { input_per_million: 1, output_per_million: 1 },
+      },
+    } satisfies Experiment;
+    await writeFile(
+      path.join(d, "manifest.json"),
+      JSON.stringify({
+        input_hash: "input",
+        workspace_hash: "workspace",
+        patch_hashes: { base: "hash", ignored: 1 },
+        case_hashes: { x: "hash", ignored: false },
+      }),
+    );
+    await writeFile(
+      path.join(d, "run-state.json"),
+      JSON.stringify({ version: 1, incomplete: true, reason: "budget" }),
+    );
+    const base = { ...cell("base"), input_tokens: 0, output_tokens: 0 };
+    const candidate = {
+      ...cell("candidate"),
+      status: "fail" as const,
+      assertion_failures: ["output_contains"],
+    };
+    const result = await report(d, e, [base, candidate]);
+    expect(result).toMatchObject({
+      incomplete: true,
+      comparisons: [{ median_token_delta_pct: null }],
+      per_case_comparisons: [{ median_token_delta_pct: null }],
+      manifest: { patch_hashes: { base: "hash" } },
+    });
+    expect(
+      result.variants.find((row) => row.variant === "candidate")?.cost,
+    ).toBe("unavailable");
+    expect(await readFile(path.join(d, "report.md"), "utf8")).toContain(
+      "output_contains",
+    );
+
+    candidate.input_tokens = 0;
+    candidate.output_tokens = 0;
+    const zero = await report(d, e, [base, candidate]);
+    expect(zero.comparisons[0]?.median_token_delta_pct).toBe(0);
   });
 });
 describe("decision services", () => {

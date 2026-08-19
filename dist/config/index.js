@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import YAML from "yaml";
 const fail = (message) => {
     throw new Error(`E_CONFIG: ${message}`);
@@ -21,8 +22,33 @@ const safePath = (value, label) => {
 };
 export const hash = (data) => createHash("sha256").update(data).digest("hex");
 export const resolveInput = (experimentFile, relative) => path.resolve(path.dirname(experimentFile), relative);
+export const validateExperiment = async (raw) => {
+    const schema = JSON.parse(await readFile(new URL("../../schemas/experiment.schema.json", import.meta.url), "utf8"));
+    const validate = new Ajv2020({ allErrors: true, strict: true }).compile(schema);
+    if (!validate(raw))
+        fail(`schema validation failed: ${validate.errors
+            ?.map((error) => `${error.instancePath || "/"} ${error.message}`)
+            .join("; ")}`);
+    const experiment = raw;
+    safePath(experiment.cases_dir, "cases_dir");
+    safePath(experiment.workspace_template, "workspace_template");
+    const ids = new Set();
+    for (const variant of experiment.variants) {
+        if (ids.has(variant.id))
+            fail("duplicate variant id");
+        safePath(variant.patch, "patch");
+        ids.add(variant.id);
+    }
+    if (!ids.has(experiment.baseline))
+        fail("baseline variant missing");
+    if (experiment.judge)
+        safePath(experiment.judge.command, "judge command");
+    if (experiment.variants.length * experiment.repetitions >
+        experiment.run.max_runs)
+        fail("max_runs exceeded");
+    return experiment;
+};
 export const loadExperiment = async (file) => {
-    await readFile(new URL("../../schemas/experiment.schema.json", import.meta.url), "utf8"); // published schema is the validation contract
     const doc = YAML.parseDocument(await readFile(file, "utf8"), {
         uniqueKeys: true,
         merge: false,
@@ -30,75 +56,27 @@ export const loadExperiment = async (file) => {
     });
     if (doc.errors.length || doc.warnings.length || doc.contents === null)
         fail(`invalid YAML: ${doc.errors.concat(doc.warnings).map(String).join("; ")}`);
-    const x = object(doc.toJS(), "experiment");
-    keys(x, [
-        "schema_version",
-        "name",
-        "cases_dir",
-        "workspace_template",
-        "baseline",
-        "variants",
-        "repetitions",
-        "run",
-        "pricing",
-        "gate",
-    ], "top-level");
-    if (x.schema_version !== 1 ||
-        typeof x.name !== "string" ||
-        !x.name ||
-        typeof x.cases_dir !== "string" ||
-        typeof x.workspace_template !== "string" ||
-        typeof x.baseline !== "string" ||
-        !Array.isArray(x.variants) ||
-        x.variants.length < 2 ||
-        !Number.isInteger(x.repetitions) ||
-        Number(x.repetitions) < 1)
-        fail("experiment contract invalid");
-    const casesDir = x.cases_dir, workspaceTemplate = x.workspace_template, baseline = x.baseline, variantsRaw = x.variants;
-    safePath(casesDir, "cases_dir");
-    safePath(workspaceTemplate, "workspace_template");
-    const ids = new Set();
-    for (const raw of variantsRaw) {
-        const v = object(raw, "variant");
-        keys(v, ["id", "profile", "patch"], "variant");
-        if (typeof v.id !== "string" ||
-            !v.id ||
-            typeof v.profile !== "string" ||
-            !v.profile ||
-            typeof v.patch !== "string" ||
-            ids.has(v.id))
-            fail("invalid or duplicate variant");
-        safePath(v.patch, "patch");
-        ids.add(v.id);
+    let raw;
+    try {
+        raw = doc.toJS({ maxAliasCount: 0 });
     }
-    if (!ids.has(baseline))
-        fail("baseline variant missing");
-    const run = object(x.run, "run");
-    keys(run, [
-        "concurrency",
-        "timeout_ms",
-        "max_runs",
-        "max_total_tokens",
-        "env_allowlist",
-    ], "run");
-    if (!Number.isInteger(run.concurrency) ||
-        Number(run.concurrency) < 1 ||
-        Number(run.concurrency) > 8 ||
-        !Number.isInteger(run.timeout_ms) ||
-        Number(run.timeout_ms) < 1 ||
-        !Number.isInteger(run.max_runs) ||
-        Number(run.max_runs) < 1 ||
-        !Number.isInteger(run.max_total_tokens) ||
-        Number(run.max_total_tokens) < 0 ||
-        (run.env_allowlist !== undefined &&
-            (!Array.isArray(run.env_allowlist) ||
-                run.env_allowlist.some((x) => typeof x !== "string"))))
-        fail("invalid run settings");
-    const experiment = x;
-    if (experiment.variants.length * experiment.repetitions >
-        experiment.run.max_runs)
-        fail("max_runs exceeded");
-    return experiment;
+    catch (error) {
+        fail(`invalid YAML: ${error.message}`);
+    }
+    return validateExperiment(raw);
+};
+export const loadResultExperiment = async (output, explicit) => {
+    if (explicit)
+        return loadExperiment(explicit);
+    try {
+        const manifest = JSON.parse(await readFile(path.join(output, "manifest.json"), "utf8"));
+        if (!manifest.experiment)
+            throw new Error("missing experiment snapshot");
+        return validateExperiment(manifest.experiment);
+    }
+    catch (error) {
+        throw new Error(`E_CONFIG: result manifest is missing or invalid; provide an experiment (${error.message})`);
+    }
 };
 export const loadCases = async (experimentFile, experiment, filters = {}) => {
     const dir = resolveInput(experimentFile, experiment.cases_dir);
@@ -107,9 +85,16 @@ export const loadCases = async (experimentFile, experiment, filters = {}) => {
     const seen = new Set();
     for (const name of names) {
         const doc = YAML.parseDocument(await readFile(path.join(dir, name), "utf8"), { uniqueKeys: true, merge: false });
-        if (doc.errors.length || doc.contents === null)
+        if (doc.errors.length || doc.warnings.length || doc.contents === null)
             fail(`invalid case ${name}`);
-        const value = object(doc.toJS(), "case");
+        let caseValue;
+        try {
+            caseValue = doc.toJS({ maxAliasCount: 0 });
+        }
+        catch (error) {
+            fail(`invalid case ${name}: ${error.message}`);
+        }
+        const value = object(caseValue, "case");
         keys(value, ["name", "prompt", "tags", "retries", "assert", "assertions"], "case");
         if (typeof value.name !== "string" ||
             !value.name ||
@@ -145,6 +130,42 @@ export const loadCases = async (experimentFile, experiment, filters = {}) => {
                 "no_tool_errors",
                 "output_judge",
             ], "assert");
+            const stringLists = [
+                "tools_called",
+                "called_tools",
+                "tools_exact",
+                "tools_not_called",
+                "forbidden_tools",
+                "output_contains",
+                "output_not_contains",
+                "tool_args_contains",
+                "tool_result_contains",
+            ];
+            for (const key of stringLists) {
+                const raw = assertion[key];
+                if (raw !== undefined &&
+                    !(typeof raw === "string" ||
+                        (Array.isArray(raw) &&
+                            raw.every((item) => typeof item === "string"))))
+                    fail(`invalid assertion ${key}`);
+            }
+            if (assertion.turn_end !== undefined &&
+                typeof assertion.turn_end !== "string")
+                fail("invalid assertion turn_end");
+            for (const key of ["max_steps", "max_tokens"]) {
+                const raw = assertion[key];
+                if (raw !== undefined && (!Number.isInteger(raw) || Number(raw) < 0))
+                    fail(`invalid assertion ${key}`);
+            }
+            if (assertion.no_tool_errors !== undefined &&
+                typeof assertion.no_tool_errors !== "boolean")
+                fail("invalid assertion no_tool_errors");
+            if (assertion.output_judge !== undefined &&
+                !(typeof assertion.output_judge === "string" ||
+                    (!!assertion.output_judge &&
+                        typeof assertion.output_judge === "object" &&
+                        !Array.isArray(assertion.output_judge))))
+                fail("invalid assertion output_judge");
             for (const pattern of [
                 assertion.output_matches,
                 assertion.output_regex,

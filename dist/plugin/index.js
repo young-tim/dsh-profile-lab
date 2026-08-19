@@ -1,31 +1,40 @@
 import { defineTool, } from "@deepseek-ai/dsh-tools";
-import { loadExperiment } from "../config/index.js";
+import { loadExperiment, loadResultExperiment } from "../config/index.js";
 import { run } from "../runner/index.js";
 import { report } from "../report/index.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-export const profile_lab_run = async (input) => {
+import { gateCandidates, validatePolicy } from "../gate/index.js";
+export const profile_lab_run = async (input, signal) => {
     const experiment = await loadExperiment(input.experiment);
-    return run(experiment, input.output, input.driver, input.experiment);
+    return run(experiment, input.output, input.driver ?? "dsh", input.experiment, undefined, false, signal);
 };
-export const profile_lab_compare = async (input) => report(input.output, await loadExperiment(input.experiment), JSON.parse(await readFile(path.join(input.output, "journal.json"), "utf8")));
+export const profile_lab_compare = async (input) => report(input.output, await loadResultExperiment(input.output, input.experiment), JSON.parse(await readFile(path.join(input.output, "journal.json"), "utf8")));
 export const profile_lab_gate = async (input) => {
     if (!input?.policy)
         throw new Error("E_CONFIG: explicit policy required");
     const result = await profile_lab_compare(input);
-    const experiment = await loadExperiment(input.experiment);
+    const experiment = await loadResultExperiment(input.output, input.experiment);
     const base = result.variants.find((x) => x.variant === experiment.baseline);
-    const candidate = result.variants.find((x) => x.variant !== experiment.baseline);
-    if (!base || !candidate)
-        throw new Error("E_CONFIG: baseline missing");
-    const { gate } = await import("../gate/index.js");
-    const reasons = gate(base, candidate, input.policy);
-    return { verdict: reasons.length ? "regression" : "pass", reasons };
+    const candidates = result.variants.filter((x) => x.variant !== experiment.baseline);
+    const results = gateCandidates(base, candidates, validatePolicy(input.policy));
+    const reasons = results.flatMap((result) => result.reasons.map((reason) => `${result.variant}: ${reason}`));
+    if (result.incomplete)
+        return {
+            verdict: "incomplete",
+            reasons: ["run is incomplete"],
+            candidates: results,
+        };
+    return {
+        verdict: reasons.length ? "regression" : "pass",
+        reasons,
+        candidates: results,
+    };
 };
 export const name = "dsh-profile-lab";
 export const inject = ["tools"];
-const baseSchema = {
-    experiment: { type: "string", required: true },
+const resultSchema = {
+    experiment: { type: "string" },
     output: { type: "string", required: true },
 };
 const output = {
@@ -35,23 +44,35 @@ const output = {
     ],
 };
 export const apply = (ctx) => {
+    const active = new Set();
     const dispose = [
         ctx.tools.register(defineTool({
             name: "profile_lab_run",
             description: "Run an isolated DSH profile experiment.",
             parameters: {
-                ...baseSchema,
-                driver: { type: "string", required: true },
+                experiment: { type: "string", required: true },
+                output: { type: "string", required: true },
+                driver: { type: "string" },
             },
             output,
-            async execute(args) {
-                return profile_lab_run(args);
+            async execute(args, exec) {
+                const controller = new AbortController();
+                const abort = () => controller.abort();
+                exec?.signal.addEventListener("abort", abort, { once: true });
+                active.add(controller);
+                try {
+                    return await profile_lab_run(args, controller.signal);
+                }
+                finally {
+                    active.delete(controller);
+                    exec?.signal.removeEventListener("abort", abort);
+                }
             },
         })),
         ctx.tools.register(defineTool({
             name: "profile_lab_compare",
             description: "Generate deterministic reports for an experiment.",
-            parameters: baseSchema,
+            parameters: resultSchema,
             output,
             async execute(args) {
                 return profile_lab_compare(args);
@@ -61,7 +82,7 @@ export const apply = (ctx) => {
             name: "profile_lab_gate",
             description: "Evaluate a profile experiment policy gate.",
             parameters: {
-                ...baseSchema,
+                ...resultSchema,
                 policy: { type: "json", required: true },
             },
             output,
@@ -77,6 +98,10 @@ export const apply = (ctx) => {
             },
         })),
     ];
-    return () => dispose.forEach((unregister) => unregister());
+    return () => {
+        active.forEach((controller) => controller.abort());
+        active.clear();
+        dispose.forEach((unregister) => unregister());
+    };
 };
 export default apply;

@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import YAML from "yaml";
-import { loadExperiment } from "./config/index.js";
+import { loadExperiment, loadResultExperiment } from "./config/index.js";
 import { readRunState, run } from "./runner/index.js";
 import { report } from "./report/index.js";
-import { gate } from "./gate/index.js";
+import { gateCandidates, validatePolicy } from "./gate/index.js";
 const usage = (message) => {
     throw new Error(`E_CONFIG: ${message}`);
 };
@@ -39,12 +41,18 @@ const parse = (argv) => {
     }
     return { positional, options };
 };
+const rejectOptions = (options, allowed) => {
+    for (const option of options.keys())
+        if (!allowed.includes(option))
+            usage(`option ${option} is not valid here`);
+};
 export const main = async (argv = process.argv.slice(2)) => {
     const [command, ...rest] = argv;
     if (!command)
         usage("command required");
     const { positional, options } = parse(rest);
     if (command === "schema") {
+        rejectOptions(options, ["--check"]);
         const check = options.get("--check");
         if (positional.length || !check)
             usage("schema requires --check FILE");
@@ -54,14 +62,21 @@ export const main = async (argv = process.argv.slice(2)) => {
     }
     if (!["run", "compare", "gate"].includes(command))
         usage(`unknown command ${command}`);
-    const output = options.get("--output") ?? positional[0];
-    if (!output)
-        usage("output required");
     if (command === "run") {
+        rejectOptions(options, [
+            "--driver",
+            "--output",
+            "--tag",
+            "--case",
+            "--restart",
+        ]);
+        if (positional.length !== 1)
+            usage("run requires one EXPERIMENT");
         const experiment = positional[0];
-        const driver = options.get("--driver");
-        if (!experiment || !driver)
-            usage("run requires EXPERIMENT and --driver DRIVER");
+        const driver = options.get("--driver") ?? "dsh";
+        if (!options.get("--output"))
+            usage("run requires --output DIRECTORY");
+        const output = options.get("--output");
         const e = await loadExperiment(experiment);
         const controller = new AbortController();
         const cancel = () => controller.abort();
@@ -82,9 +97,12 @@ export const main = async (argv = process.argv.slice(2)) => {
             ? 3
             : 0;
     }
+    rejectOptions(options, command === "compare" ? ["--check"] : ["--check", "--policy"]);
+    if (positional.length !== 1)
+        usage(`${command} requires one OUTPUT`);
+    const output = positional[0];
     const cells = JSON.parse(await readFile(path.join(output, "journal.json"), "utf8"));
-    const experiment = options.get("--check") ?? "examples/experiment.yml";
-    const e = await loadExperiment(experiment);
+    const e = await loadResultExperiment(output, options.get("--check"));
     const result = await report(output, e, cells);
     if (command === "compare") {
         console.log("reports written");
@@ -93,24 +111,33 @@ export const main = async (argv = process.argv.slice(2)) => {
     const policyFile = options.get("--policy");
     if (!policyFile)
         usage("gate requires --policy FILE");
-    const policy = YAML.parse(await readFile(policyFile, "utf8"));
+    const policy = validatePolicy(YAML.parse(await readFile(policyFile, "utf8")));
     const base = result.variants.find((x) => x.variant === e.baseline);
-    const candidate = result.variants.find((x) => x.variant !== e.baseline);
-    if (!base || !candidate)
+    const candidates = result.variants.filter((x) => x.variant !== e.baseline);
+    if (!base || !candidates.length)
         return 2;
-    const reasons = gate(base, candidate, policy);
+    const verdicts = gateCandidates(base, candidates, policy);
+    const reasons = verdicts.flatMap((verdict) => verdict.reasons.map((reason) => `${verdict.variant}: ${reason}`));
     if (result.incomplete)
         return 3;
     if (reasons.length) {
         console.error(reasons.join("; "));
         return 1;
     }
-    console.log("gate passed");
+    console.log(JSON.stringify({ verdict: "pass", candidates: verdicts }));
     return 0;
 };
-const invoked = process.argv[1] &&
-    (import.meta.url === new URL(process.argv[1], "file:").href ||
-        import.meta.url.endsWith("/dist/cli.js"));
+const invoked = (() => {
+    if (!process.argv[1])
+        return false;
+    try {
+        return (realpathSync(process.argv[1]) ===
+            realpathSync(fileURLToPath(import.meta.url)));
+    }
+    catch {
+        return false;
+    }
+})();
 export const exitCodeForError = (error) => String(error.message).startsWith("E_RUN:") ? 3 : 2;
 if (invoked)
     main()
