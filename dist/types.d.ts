@@ -8,6 +8,7 @@ export type RunSettings = {
     timeout_ms: number;
     max_runs: number;
     max_total_tokens: number;
+    credentials?: "inherit" | "env-only";
     env_allowlist?: string[];
 };
 export type Assertion = Record<string, unknown>;

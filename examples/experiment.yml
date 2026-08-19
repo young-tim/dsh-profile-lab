@@ -12,4 +12,4 @@ run:
   timeout_ms: 600000
   max_runs: 20
   max_total_tokens: 100000
-  env_allowlist: [DEEPSEEK_API_KEY]
+  credentials: inherit

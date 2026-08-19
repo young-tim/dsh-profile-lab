@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { mkdtemp, readFile, stat, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdtemp,
+  readFile,
+  readdir,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -8,6 +15,88 @@ import { loadExperiment } from "../src/config/index.js";
 import { report } from "../src/report/index.js";
 import { readRunState, run } from "../src/runner/index.js";
 describe("matrix runner", () => {
+  it.each([
+    ["default inheritance", undefined, true],
+    ["env-only isolation", "env-only", false],
+  ] as const)(
+    "uses %s credentials during execution and never retains them",
+    async (_label, credentials, expected) => {
+      const sourceHome = await mkdtemp(path.join(tmpdir(), "lab-dsh-home-"));
+      const out = await mkdtemp(path.join(tmpdir(), "lab-credentials-out-"));
+      const log = path.join(
+        await mkdtemp(path.join(tmpdir(), "lab-credentials-log-")),
+        "credentials.jsonl",
+      );
+      const sourceCredentials = path.join(sourceHome, ".credentials.yaml");
+      const secret = "token: test-only-secret\n";
+      await writeFile(sourceCredentials, secret, { mode: 0o640 });
+      await writeFile(log, "");
+      const originalHome = process.env.DSH_HOME;
+      process.env.DSH_HOME = sourceHome;
+      process.env.FAKE_CREDENTIAL_LOG = log;
+      try {
+        const loaded = await loadExperiment("examples/experiment.yml");
+        await run(
+          {
+            ...loaded,
+            repetitions: 1,
+            run: {
+              ...loaded.run,
+              credentials,
+              max_runs: 4,
+              env_allowlist: ["FAKE_CREDENTIAL_LOG"],
+            },
+          },
+          out,
+          path.resolve("fixtures/fake-dsh"),
+        );
+        const observations = (await readFile(log, "utf8"))
+          .trim()
+          .split("\n")
+          .map(JSON.parse) as Array<{
+          exists: boolean;
+          content: string | null;
+          mode: number | null;
+        }>;
+        expect(observations).toHaveLength(4);
+        expect(observations.every((item) => item.exists === expected)).toBe(
+          true,
+        );
+        if (expected) {
+          expect(observations.every((item) => item.content === secret)).toBe(
+            true,
+          );
+          if (process.platform !== "win32")
+            expect(observations.every((item) => item.mode === 0o600)).toBe(
+              true,
+            );
+        }
+        const cellRoots = await readdir(path.join(out, ".runs"));
+        for (const cellRoot of cellRoots)
+          await expect(
+            stat(
+              path.join(
+                out,
+                ".runs",
+                cellRoot,
+                "attempt-1",
+                "home",
+                ".credentials.yaml",
+              ),
+            ),
+          ).rejects.toThrow();
+        expect(await readFile(sourceCredentials, "utf8")).toBe(secret);
+        for (const artifact of ["manifest.json", "journal.json"])
+          expect(
+            await readFile(path.join(out, artifact), "utf8"),
+          ).not.toContain(secret);
+      } finally {
+        if (originalHome === undefined) delete process.env.DSH_HOME;
+        else process.env.DSH_HOME = originalHome;
+        delete process.env.FAKE_CREDENTIAL_LOG;
+      }
+    },
+  );
   it("resumes completed cells without duplicate invocations or source writes", async () => {
     const out = await mkdtemp(path.join(tmpdir(), "lab-out-"));
     const log = path.join(
@@ -127,24 +216,51 @@ describe("matrix runner", () => {
     }
   });
   it("times out the slow driver and retains incomplete cell evidence", async () => {
+    const sourceHome = await mkdtemp(path.join(tmpdir(), "lab-timeout-home-"));
+    await writeFile(
+      path.join(sourceHome, ".credentials.yaml"),
+      "token: timeout-secret\n",
+    );
     const out = await mkdtemp(path.join(tmpdir(), "lab-timeout-"));
     const e = await loadExperiment("examples/experiment.yml");
     const started = Date.now();
-    const result = await run(
-      {
-        ...e,
-        repetitions: 1,
-        run: { ...e.run, concurrency: 1, max_runs: 4, timeout_ms: 20 },
-      },
-      out,
-      path.resolve("fixtures/fake-slow"),
-    );
+    const originalHome = process.env.DSH_HOME;
+    process.env.DSH_HOME = sourceHome;
+    let result: Awaited<ReturnType<typeof run>>;
+    try {
+      result = await run(
+        {
+          ...e,
+          repetitions: 1,
+          run: { ...e.run, concurrency: 1, max_runs: 4, timeout_ms: 20 },
+        },
+        out,
+        path.resolve("fixtures/fake-slow"),
+      );
+    } finally {
+      if (originalHome === undefined) delete process.env.DSH_HOME;
+      else process.env.DSH_HOME = originalHome;
+    }
     expect(Date.now() - started).toBeLessThan(2_000);
     expect(result).toHaveLength(4);
     expect(result.every((cell) => cell.status === "error")).toBe(true);
     expect(result.every((cell) => cell.evidence.startsWith(".runs/"))).toBe(
       true,
     );
+    const cellRoots = await readdir(path.join(out, ".runs"));
+    for (const cellRoot of cellRoots)
+      await expect(
+        stat(
+          path.join(
+            out,
+            ".runs",
+            cellRoot,
+            "attempt-1",
+            "home",
+            ".credentials.yaml",
+          ),
+        ),
+      ).rejects.toThrow();
   });
   it("stops dispatching when the runner cancellation signal aborts", async () => {
     const out = await mkdtemp(path.join(tmpdir(), "lab-cancel-"));

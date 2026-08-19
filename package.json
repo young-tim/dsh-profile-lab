@@ -30,10 +30,17 @@
   "dsh": {
     "bundle": {
       "patch": "cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ],
+      "platform": "web"
     }
   },
   "exports": {
     ".": "./dist/index.js",
+    "./client": "./dist/client.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json",
     "./schemas/experiment.schema.json": "./schemas/experiment.schema.json",
@@ -49,7 +56,7 @@
   "scripts": {
     "format": "prettier --write src test fixtures examples schemas package.json",
     "format:check": "prettier --check src test fixtures examples schemas package.json",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/build-client.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --coverage.enabled=false",
@@ -67,15 +74,23 @@
     "@deepseek-ai/dsh-tools": ">=0.1.0-rc.7 <0.2.0-0"
   },
   "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
     "@deepseek-ai/dsh": "0.1.0-rc.7",
+    "@deepseek-ai/dsh-client-locale": "0.1.0-rc.7",
+    "@deepseek-ai/dsh-client-runtime": "0.1.0-rc.7",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.0-rc.7",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.7",
     "@deepseek-ai/dsh-session": "0.1.0-rc.7",
     "@deepseek-ai/dsh-tools": "0.1.0-rc.7",
     "@eslint/js": "^9.39.1",
     "@types/node": "^24.10.1",
+    "@types/react": "18.3.31",
     "@vitest/coverage-v8": "^4.0.14",
     "ajv-cli": "5.0.0",
+    "esbuild": "0.28.2",
     "eslint": "^9.39.1",
     "prettier": "^3.6.2",
+    "react": "18.2.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.4",
     "vitest": "^4.0.14"

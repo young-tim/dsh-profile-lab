@@ -19,6 +19,9 @@ extensions and do not break the local experiment-to-decision loop.
 
 - Official argv: `dsh --profile <profile> --patch <patch> <prompt>` runs from an
   isolated workspace with an isolated `DSH_HOME` per attempt.
+- Credentials: the default mode exposes the current DSH credential store only
+  while a child process is running, forces mode `0600`, leaves the host file
+  unchanged and retains no credential copy; `env-only` exposes no host store.
 - Official evidence: packed records, nested assistant messages, usage fields,
   multi-frame zstd and recoverable corrupt tails are projected and audited.
 - Reliability: retries retain every attempt; timeout/SIGINT terminate process

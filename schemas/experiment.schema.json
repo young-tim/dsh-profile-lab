@@ -42,6 +42,11 @@
         "timeout_ms": { "type": "integer", "minimum": 1 },
         "max_runs": { "type": "integer", "minimum": 1 },
         "max_total_tokens": { "type": "integer", "minimum": 0 },
+        "credentials": {
+          "type": "string",
+          "enum": ["inherit", "env-only"],
+          "default": "inherit"
+        },
         "env_allowlist": {
           "type": "array",
           "uniqueItems": true,

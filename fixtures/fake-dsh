@@ -1,11 +1,27 @@
 #!/usr/bin/env node
-import { appendFileSync, existsSync } from "node:fs";
+import { appendFileSync, existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 if (process.env.FAKE_DSH_LOG)
   appendFileSync(
     process.env.FAKE_DSH_LOG,
     JSON.stringify(process.argv.slice(2)) + "\n",
   );
+if (process.env.FAKE_CREDENTIAL_LOG) {
+  const credentials = path.join(
+    process.env.DSH_HOME ?? "",
+    ".credentials.yaml",
+  );
+  appendFileSync(
+    process.env.FAKE_CREDENTIAL_LOG,
+    JSON.stringify({
+      exists: existsSync(credentials),
+      content: existsSync(credentials)
+        ? readFileSync(credentials, "utf8")
+        : null,
+      mode: existsSync(credentials) ? statSync(credentials).mode & 0o777 : null,
+    }) + "\n",
+  );
+}
 const args = process.argv.slice(2);
 const get = (x) => args[args.indexOf(x) + 1];
 const patch = get("--patch");

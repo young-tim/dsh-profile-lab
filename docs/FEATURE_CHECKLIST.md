@@ -103,6 +103,7 @@ jq -e '[.cells[].variant] | unique | length == 2' .profile-lab/matrix/report.jso
 - [ ] 每个 variant 的 patch 必须被解析、校验并与 Profile Lab 隔离 patch 组合后传入 `--patch`。
 - [ ] patch 文件哈希进入运行 manifest 和 cell 身份。
 - [ ] 不允许安装、删除或更新用户插件；只读现有 profile，使用独立临时 `DSH_HOME` 和 overlay。
+- [ ] 默认仅在 attempt 运行期间复用宿主 `.credentials.yaml`，权限固定为 `0600`；成功、失败、超时和取消后均清理。CI 可配置 `credentials: env-only` 禁止继承。
 - [ ] fake driver 必须记录完整 argv，测试不能只根据 `--variant` 输出预制结果。
 - [ ] 增加一个无需 API key 的官方 DSH 启动/加载 smoke，证明 bundle 和 overlay 能被 RC loader 接受。
 

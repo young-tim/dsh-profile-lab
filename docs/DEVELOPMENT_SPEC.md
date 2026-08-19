@@ -88,7 +88,8 @@ run:
   timeout_ms: 600000
   max_runs: 100
   max_total_tokens: 1000000
-pricing:                         # optional; no online price lookup
+  credentials: inherit # default; env-only for explicit CI secrets
+pricing: # optional; no online price lookup
   base: { input_per_million: 0, output_per_million: 0 }
 gate:
   min_candidate_pass_rate: 0.8
@@ -257,4 +258,3 @@ the packed bundle in the current official DSH profile. All required checks pass,
 coverage meets the gate, skipped tests are zero, safety fixtures leave their
 source directories byte-identical, and `BLOCKED.md` contains either `None` or a
 bounded, evidenced non-MVP issue.
-

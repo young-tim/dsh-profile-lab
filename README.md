@@ -7,9 +7,10 @@ DSH Profile Lab 是 DeepSeek Harness 的本地实验与发布门禁工具。它�
 workspace 中重复运行多个 DSH profile/patch 组合，基于官方持久化 session
 事件计算质量、token、费用、时延和稳定性，并输出可审计报告。
 
-产品包含完整的命令行闭环和三个 DSH 工具：`profile_lab_run`、
-`profile_lab_compare`、`profile_lab_gate`。Web 仪表盘、云托管、账号系统和自动
-安装插件不属于本产品边界；这些能力不是完成核心实验闭环的前提。
+产品包含完整的命令行闭环、三个 DSH 工具，以及 Web profile 会话中的“Profile 组合对比”
+页签：`profile_lab_compare` 完成后，页签自动读取当前会话最近一次结构化报告，
+展示方案概览、基线差异、用例矩阵与 Pareto 前沿。云托管、账号系统和自动安装
+插件仍不属于本产品边界。
 
 ## Install as a DSH plugin
 
@@ -22,15 +23,17 @@ dsh plugin --profile web add github:young-tim/dsh-profile-lab
 ```
 
 安装后重启对应 DSH 进程，模型即可使用 `profile_lab_run`、
-`profile_lab_compare` 和 `profile_lab_gate`。卸载命令：
+`profile_lab_compare` 和 `profile_lab_gate`。Web profile 还会在“对话 / 轨迹”旁
+增加“Profile 组合对比”页签；当前会话尚未调用 `profile_lab_compare` 时，空状态会说明
+如何准备实验配置、让模型运行评测并生成报告。卸载命令：
 
 ```bash
 dsh plugin --profile headless remove dsh-profile-lab
 dsh plugin --profile web remove dsh-profile-lab
 ```
 
-第三方 DSH 插件以当前用户权限运行。安装前应检查源码；实验密钥必须通过
-`env_allowlist` 显式授权。安全边界见 [`SECURITY.md`](SECURITY.md)。
+第三方 DSH 插件以当前用户权限运行。安装前应检查源码；Profile Lab 默认临时复用
+当前 DSH 登录凭证，子进程结束后立即清理。安全边界见 [`SECURITY.md`](SECURITY.md)。
 
 ## Requirements
 
@@ -39,8 +42,9 @@ dsh plugin --profile web remove dsh-profile-lab
 - `@deepseek-ai/dsh` `0.1.0-rc.7`
 - 一个可运行的 DSH profile；默认 driver 是 PATH 中的 `dsh`
 
-真实运行可能调用模型并产生费用。Profile Lab 不会自行发现或转发密钥；需要在
-experiment 的 `run.env_allowlist` 中明确写出允许传给隔离子进程的环境变量名。
+真实运行可能调用模型并产生费用。默认的 `run.credentials: inherit` 会临时复用当前
+`DSH_HOME/.credentials.yaml`，无需再次配置 Key。CI 可使用 `credentials: env-only`
+并通过 `run.env_allowlist` 显式授权所需环境变量。
 
 ## 10-minute quick start
 
@@ -51,8 +55,7 @@ pnpm build
 # 校验完整 experiment、case 和嵌套字段
 node dist/cli.js schema --check examples/experiment.yml
 
-# 使用已配置好的真实 DSH；结果目录必须为空或由 Profile Lab 创建
-export DEEPSEEK_API_KEY='...'
+# 使用已登录的真实 DSH；结果目录必须为空或由 Profile Lab 创建
 node dist/cli.js run examples/experiment.yml \
   --output .profile-lab/real-run
 
@@ -95,7 +98,7 @@ run:
   timeout_ms: 600000
   max_runs: 100
   max_total_tokens: 100000
-  env_allowlist: [DEEPSEEK_API_KEY]
+  credentials: inherit # 默认值，可省略
 pricing:
   base: { input_per_million: 0.14, output_per_million: 0.28 }
   candidate: { input_per_million: 0.14, output_per_million: 0.28 }
@@ -159,7 +162,7 @@ adapter 从 stdin 接收 `{"prompt", "output", "rubric"}`，最后一行 stdout 
 
 - `manifest.json`：规范化 experiment、workspace/case/patch/judge 哈希
 - `journal.json`：原子写入的 cell 与 attempt 结果，可用于 resume
-- `.runs/<cell>/attempt-N/`：隔离 workspace、DSH_HOME、patch 副本和原始证据
+- `.runs/<cell>/attempt-N/`：隔离 workspace、已清除凭证的 DSH_HOME、patch 副本和原始证据
 - `run-state.json`：完整、预算停止或取消状态
 - `report.json`、`report.md`、`report.html`：机器、评审和离线浏览格式
 
@@ -182,6 +185,8 @@ Policy 支持 `min_candidate_pass_rate`、`max_pass_rate_drop_pp`、
 ## Safety model
 
 - 每个 attempt 使用独立 workspace、DSH_HOME 和 patch 副本。
+- 默认从宿主 DSH_HOME 临时复制凭证，权限设为 `0600`，并在 attempt 的 `finally`
+  清理；凭证不会进入 manifest、journal 或报告。`credentials: env-only` 可彻底禁用继承。
 - 源 workspace、patch 和 judge 在运行后重新哈希；发生变化会失败关闭。
 - 拒绝 workspace 中的 symlink、socket、device、FIFO 等特殊文件。
 - 子进程使用 argv 数组和 `shell: false`；超时终止整个进程组并升级到 SIGKILL。

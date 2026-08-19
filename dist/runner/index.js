@@ -102,6 +102,27 @@ const copyProfile = async (profile, home) => {
         throw new Error(`E_CONFIG: profile not found: ${profile}`);
     }
 };
+const stageCredentials = async (home, mode = "inherit") => {
+    if (mode === "env-only")
+        return;
+    const sourceHome = process.env.DSH_HOME ?? path.join(homedir(), ".dsh");
+    const source = path.join(sourceHome, ".credentials.yaml");
+    let stat;
+    try {
+        stat = await lstat(source);
+    }
+    catch (error) {
+        if (error.code === "ENOENT")
+            return;
+        throw error;
+    }
+    if (stat.isSymbolicLink() || !stat.isFile())
+        throw new Error("E_SAFETY: unsafe DSH credentials file");
+    const target = path.join(home, ".credentials.yaml");
+    await mkdir(home, { recursive: true });
+    await writeFile(target, await readFile(source), { mode: 0o600, flag: "wx" });
+    return target;
+};
 const preflightProfiles = async (profiles) => {
     const sourceHome = process.env.DSH_HOME ?? path.join(homedir(), ".dsh");
     for (const profile of [...new Set(profiles)]) {
@@ -372,6 +393,7 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
                 for (const name of e.run.env_allowlist ?? [])
                     if (process.env[name] !== undefined)
                         env[name] = process.env[name];
+                const stagedCredentials = await stageCredentials(home, e.run.credentials);
                 const started = Date.now();
                 try {
                     const output = await invoke(driverExecutable, args, env, e.run.timeout_ms, workspace, signal);
@@ -530,6 +552,10 @@ export const run = async (e, base, driver, experimentFile = "examples/experiment
                         incompleteReason = "budget";
                         break;
                     }
+                }
+                finally {
+                    if (stagedCredentials)
+                        await rm(stagedCredentials, { recursive: true, force: true });
                 }
             }
             if (result) {

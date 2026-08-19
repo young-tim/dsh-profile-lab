@@ -6,11 +6,19 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { ToolDefinition } from "@deepseek-ai/dsh-tools";
 import { apply, profile_lab_gate } from "../src/plugin/index.js";
+import {
+  apply as packageApply,
+  inject as packageInject,
+  name as packageName,
+} from "../src/index.js";
 const execute = promisify(execFile);
 describe("package surface", () =>
   it("ships one bundle row and three executable tools", async () => {
     const patch = await readFile("cordis.patch.yml", "utf8");
     expect(patch).toContain("dsh-profile-lab");
+    expect(packageName).toBe("dsh-profile-lab");
+    expect(packageInject).toEqual(["tools"]);
+    expect(packageApply).toBe(apply);
     const tools: ToolDefinition[] = [];
     const dispose = apply({
       tools: {
@@ -43,6 +51,26 @@ describe("package surface", () =>
     dispose();
     expect(tools).toEqual([]);
   }));
+
+describe("web client surface", () => {
+  it("declares and builds the native conversation analysis tab", async () => {
+    const pkg = JSON.parse(await readFile("package.json", "utf8")) as {
+      dsh: { client: { platform: string; inject: string[] } };
+      exports: Record<string, string>;
+    };
+    expect(pkg.dsh.client).toEqual({
+      inject: ["@deepseek-ai/dsh-client-ui-conversation"],
+      platform: "web",
+    });
+    expect(pkg.exports["./client"]).toBe("./dist/client.js");
+    await execute("pnpm", ["build"], { cwd: process.cwd() });
+    const client = await readFile("dist/client.js", "utf8");
+    expect(client).toContain("window.__ModuleLoader__.load");
+    expect(client).toContain("profile-lab-analysis");
+    expect(client).toContain("Profile \\u7EC4\\u5408\\u5BF9\\u6BD4");
+    expect(client).toContain("\\u5982\\u4F55\\u8FD0\\u884C\\u8BC4\\u6D4B");
+  });
+});
 
 describe("packed package", () => {
   it("is accepted as a named row by the official DSH overlay loader", async () => {

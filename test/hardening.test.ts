@@ -7,6 +7,7 @@ import {
   loadCases,
   loadExperiment,
   loadResultExperiment,
+  validateExperiment,
 } from "../src/config/index.js";
 import { gate, validatePolicy } from "../src/gate/index.js";
 import type { Experiment, Summary } from "../src/types.js";
@@ -31,6 +32,15 @@ const summary = (overrides: Partial<Summary> = {}): Summary => ({
 });
 
 describe("configuration hardening", () => {
+  it("rejects an unknown credential mode", async () => {
+    const experiment = await loadExperiment("examples/experiment.yml");
+    await expect(
+      validateExperiment({
+        ...experiment,
+        run: { ...experiment.run, credentials: "automatic" },
+      }),
+    ).rejects.toThrow("schema validation failed");
+  });
   it.each([
     null,
     [],
