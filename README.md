@@ -28,6 +28,10 @@ dsh plugin --profile web add github:young-tim/dsh-profile-lab
 增加“Profile 组合对比”页签；当前会话尚无成功的运行或对比报告时，空状态会说明
 如何准备实验配置、让模型运行评测并生成报告。卸载命令：
 
+插件同时提供 `profile-lab-author-cases` Skill。用户要求构建、规划或改进评测用例时，
+AI 会先确认范围与预算、提出用例矩阵建议，获得明确确认后才创建文件，验证通过后再询问
+是否执行真实评测；未经确认不会产生模型调用费用。
+
 ```bash
 dsh plugin --profile headless remove dsh-profile-lab
 dsh plugin --profile web remove dsh-profile-lab
@@ -49,6 +53,82 @@ dsh plugin --profile web remove dsh-profile-lab
 `run.credentials: inherit` 还会临时复用 `DSH_HOME/.credentials.yaml`，无需在案例中
 指定模型或 Key。CI 可使用 `credentials: env-only`
 并通过 `run.env_allowlist` 显式授权所需环境变量。
+
+## 在 DSH 对话中使用
+
+安装并重启 DSH 后，不需要记忆工具参数，可以直接用自然语言描述目标。AI 会按需加载
+`profile-lab-author-cases` Skill，并调用 `profile_lab_run`、`profile_lab_compare` 或
+`profile_lab_gate`。
+
+### 示例：让 AI 协助构建用例
+
+先让 AI 调研并确认范围，不要立即写文件：
+
+> 帮我为支付重试功能设计一套 Profile Lab 用例。先检查现有 experiment 和 cases，和我
+> 确认测试范围、关键风险、断言和预算，然后给出用例矩阵建议；暂时不要创建或运行。
+
+如果 Skill 没有自动触发，可以明确指定：
+
+> 请加载 `profile-lab-author-cases` Skill，帮我规划这套评测用例。
+
+AI 应先询问类似问题：
+
+- 这次要比较什么方案，最终要支持哪个发布决策？
+- 哪些正常路径、边界条件和禁止行为必须覆盖？
+- 应观察最终输出、工具调用还是资源上限？
+- 最多允许多少次模型调用、多少 Token 或多长时间？
+
+回答后，AI 会先给出建议矩阵。你可以继续调整：
+
+> 保留正常成功、超时重试和禁止重复扣款三个用例；删除纯格式检查。smoke 用例最多两次
+> 模型调用，完整评测每个方案重复五次。先把最终文件清单和断言给我确认。
+
+只有明确确认后 AI 才会创建文件：
+
+> 我确认这个用例矩阵。请创建 case YAML 和必要的 fixture，更新 experiment，并只做
+> Schema 校验，不要运行模型。
+
+创建和校验完成后，AI 会再次询问是否运行。也可以拒绝或暂缓：
+
+> 先不运行。把预计调用次数、重试上限和输出目录建议告诉我。
+
+### 示例：用自然语言运行用例
+
+运行完整实验：
+
+> 运行 `experiments/payment/experiment.yml` 中的全部用例，结果保存到新的
+> `.profile-lab/payment-2026-08-20`。运行前先告诉我方案数、用例数、重复次数和预计模型
+> 调用总数，得到我确认后再开始。
+
+只跑 smoke 用例：
+
+> 使用 `experiments/payment/experiment.yml` 只运行带 `smoke` 标签的用例，输出到新的
+> `.profile-lab/payment-smoke-001`。不要复用旧结果目录。
+
+只跑指定用例：
+
+> 运行 `payment-success` 和 `duplicate-charge-guard` 两个用例，其他用例跳过。开始前先向我
+> 确认实际调用次数和费用风险。
+
+`profile_lab_run` 完成后会自动生成报告，“Profile 组合对比”页签会展示方案组成、Patch
+详情、通过率、Token、时延、用例矩阵和 Pareto 前沿。
+
+### 示例：读取历史结果和执行门禁
+
+读取已有结果目录并刷新 UI：
+
+> 读取 `.profile-lab/payment-2026-08-20` 的实验结果并生成最新对比报告。它是 output
+> 目录，不要把它作为 experiment 文件传入。
+
+检查是否允许发布：
+
+> 对 `.profile-lab/payment-2026-08-20` 执行发布门禁：候选通过率至少 95%，相对基线下降
+> 不超过 2 个百分点，错误率不超过 1%，中位 Token 增长不超过 15%。解释每个未通过原因。
+
+### 示例：只要建议，不创建文件
+
+> 评审现有 `cases/` 的覆盖情况，指出遗漏、脆弱断言和可能的数据泄漏，只给建议，不修改
+> 文件，也不要运行评测。
 
 ## 10-minute quick start
 

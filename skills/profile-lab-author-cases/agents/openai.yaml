@@ -1,0 +1,4 @@
+interface:
+  display_name: "Profile Lab Case Author"
+  short_description: "Design and create evaluation cases collaboratively"
+  default_prompt: "Use $profile-lab-author-cases to help me design a Profile Lab evaluation suite."

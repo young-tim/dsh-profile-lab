@@ -1,5 +1,12 @@
 # Applied by DSH after the selected profile bundle. This intentionally adds one
 # uniquely named loader row; the plugin exposes the three application tools.
 - insert:
+    - id: dsh-profile-lab-skills
+      name: '@deepseek-ai/dsh-skill-filesystem'
+      config:
+        providerName: profile-lab
+        includeDefaultRoots: false
+        customSkillDirs:
+          - !!js "process.getBuiltinModule('node:url').fileURLToPath(new URL('skills/', baseUrl))"
     - id: dsh-profile-lab
       name: dsh-profile-lab

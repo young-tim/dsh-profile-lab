@@ -16,6 +16,11 @@ describe("package surface", () =>
   it("ships one bundle row and three executable tools", async () => {
     const patch = await readFile("cordis.patch.yml", "utf8");
     expect(patch).toContain("dsh-profile-lab");
+    expect(patch).toContain("dsh-profile-lab-skills");
+    expect(patch).toContain("customSkillDirs");
+    await expect(
+      readFile("skills/profile-lab-author-cases/SKILL.md", "utf8"),
+    ).resolves.toContain("Ask for explicit approval");
     expect(packageName).toBe("dsh-profile-lab");
     expect(packageInject).toEqual(["tools"]);
     expect(packageApply).toBe(apply);

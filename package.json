@@ -48,6 +48,7 @@
   },
   "files": [
     "dist",
+    "skills",
     "schemas",
     "cordis.patch.yml",
     "README.md",
