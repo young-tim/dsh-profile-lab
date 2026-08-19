@@ -12,7 +12,9 @@ export const sanitize = (value) => {
     if (value && typeof value === "object")
         return Object.fromEntries(Object.entries(value).map(([key, item]) => [
             key,
-            sanitize(item),
+            /^(?:api[_-]?key|token|secret|password|authorization)$/i.test(key)
+                ? "[REDACTED]"
+                : sanitize(item),
         ]));
     return value;
 };

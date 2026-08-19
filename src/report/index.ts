@@ -1,5 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import YAML from "yaml";
+import type { JsonValue } from "@deepseek-ai/dsh-tools";
 import { pareto, pct, summarize } from "../stats/index.js";
 import type { Cell, Experiment } from "../types.js";
 import { readRunState } from "../runner/index.js";
@@ -13,6 +15,36 @@ const esc = (x: string) =>
       ]!,
   );
 export { redact } from "../security/index.js";
+const patchLayers = async (file: string) => {
+  try {
+    const value: unknown = YAML.parse(await readFile(file, "utf8"));
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry))
+        return [];
+      const row = entry as Record<string, unknown>;
+      const config =
+        row.config &&
+        typeof row.config === "object" &&
+        !Array.isArray(row.config)
+          ? (row.config as Record<string, unknown>)
+          : {};
+      return [
+        {
+          id:
+            typeof row.id === "string"
+              ? row.id
+              : Object.keys(row).sort().join(" + ") || "patch-entry",
+          keys: Object.keys(config).sort(),
+          detail: sanitize(row) as JsonValue,
+        },
+      ];
+    });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+};
 const put = async (file: string, text: string) => {
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(`${file}.tmp`, text);
@@ -40,6 +72,21 @@ export const report = async (dir: string, e: Experiment, cells: Cell[]) => {
     );
   const patchHashes = stringRecord(runManifest.patch_hashes);
   const caseHashes = stringRecord(runManifest.case_hashes);
+  const experimentFile = String(
+    runManifest.experiment_file ?? path.resolve("experiment.yml"),
+  );
+  const compositions = await Promise.all(
+    e.variants.map(async (variant) => ({
+      variant: variant.id,
+      profile: variant.profile ?? "unknown",
+      patch: variant.patch ?? "unknown",
+      layers: variant.patch
+        ? await patchLayers(
+            path.resolve(path.dirname(experimentFile), variant.patch),
+          )
+        : [],
+    })),
+  );
   const costFor = (variant: string, matching: Cell[]) => {
     const price = e.pricing?.[variant];
     if (!price) return "unavailable" as const;
@@ -142,6 +189,7 @@ export const report = async (dir: string, e: Experiment, cells: Cell[]) => {
       patch_hashes: patchHashes,
       env_names: [...(e.run?.env_allowlist ?? [])].sort(),
     },
+    compositions,
     variants,
     per_case,
     comparisons,

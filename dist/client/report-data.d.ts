@@ -24,11 +24,21 @@ export interface ProfileLabReportView {
     experiment: string;
     baseline: string;
     incomplete: boolean;
+    compositions?: Array<{
+        variant: string;
+        profile: string;
+        patch: string;
+        layers: Array<{
+            id: string;
+            keys: string[];
+            detail?: unknown;
+        }>;
+    }>;
     variants: ProfileLabVariantView[];
     per_case: ProfileLabCaseView[];
     comparisons: ProfileLabComparisonView[];
     pareto_quality_cost: string[];
     pareto_quality_latency: string[];
 }
-/** Find the newest successful profile_lab_compare result in a chat projection. */
+/** Find the newest report produced by a Profile Lab run or compare call. */
 export declare const extractLatestReport: (nodes: readonly unknown[]) => ProfileLabReportView | null;

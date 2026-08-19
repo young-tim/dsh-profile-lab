@@ -26,7 +26,9 @@ export const summarize = (cells, variant, caseName) => {
         pass_rate: a.length ? pass / a.length : 0,
         error_rate: a.length ? error / a.length : 0,
         flaky: pass > 0 && pass < a.length,
-        repetition_label: a.length < 5 ? "insufficient-repetitions" : undefined,
+        ...(a.length < 5
+            ? { repetition_label: "insufficient-repetitions" }
+            : {}),
         median_duration_ms: median(n((c) => c.duration_ms)),
         p95_duration_ms: quantile(n((c) => c.duration_ms), 0.95),
         median_tokens: median(n(totalTokens)),

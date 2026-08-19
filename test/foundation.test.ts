@@ -44,6 +44,13 @@ describe("statistics", () => {
     const s = summarize([cell("pass", 1), cell("fail", 2)], "a");
     expect(s.flaky).toBe(true);
     expect(s.repetition_label).toBe("insufficient-repetitions");
+    expect(
+      "repetition_label" in
+        summarize(
+          Array.from({ length: 5 }, (_, index) => cell("pass", index + 1)),
+          "a",
+        ),
+    ).toBe(false);
     expect(s.median_tokens).toBe(2);
   });
   it("calculates percent and Pareto frontiers", () => {

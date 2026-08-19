@@ -6,6 +6,14 @@ const report = {
   experiment: "routing-lab",
   baseline: "base",
   incomplete: false,
+  compositions: [
+    {
+      variant: "base",
+      profile: "headless",
+      patch: "variants/base.yml",
+      layers: [],
+    },
+  ],
   variants: [
     {
       variant: "base",
@@ -28,7 +36,7 @@ const report = {
 };
 
 describe("analysis tab report projection", () => {
-  it("selects the newest successful compare result", () => {
+  it("selects the newest successful run or compare report", () => {
     const older = { ...report, experiment: "older" };
     expect(
       extractLatestReport([
@@ -44,7 +52,19 @@ describe("analysis tab report projection", () => {
         },
         {
           kind: "tool-result",
-          call: { name: "profile_lab_compare" },
+          call: { name: "profile_lab_run" },
+          content: [{ type: "text", text: JSON.stringify(report) }],
+        },
+      ]),
+    ).toEqual(report);
+  });
+
+  it("accepts a run report without requiring a second compare call", () => {
+    expect(
+      extractLatestReport([
+        {
+          kind: "tool-result",
+          call: { name: "profile_lab_run" },
           content: [{ type: "text", text: JSON.stringify(report) }],
         },
       ]),

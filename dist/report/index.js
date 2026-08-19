@@ -1,10 +1,42 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import YAML from "yaml";
 import { pareto, pct, summarize } from "../stats/index.js";
 import { readRunState } from "../runner/index.js";
 import { sanitize } from "../security/index.js";
 const esc = (x) => x.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 export { redact } from "../security/index.js";
+const patchLayers = async (file) => {
+    try {
+        const value = YAML.parse(await readFile(file, "utf8"));
+        if (!Array.isArray(value))
+            return [];
+        return value.flatMap((entry) => {
+            if (!entry || typeof entry !== "object" || Array.isArray(entry))
+                return [];
+            const row = entry;
+            const config = row.config &&
+                typeof row.config === "object" &&
+                !Array.isArray(row.config)
+                ? row.config
+                : {};
+            return [
+                {
+                    id: typeof row.id === "string"
+                        ? row.id
+                        : Object.keys(row).sort().join(" + ") || "patch-entry",
+                    keys: Object.keys(config).sort(),
+                    detail: sanitize(row),
+                },
+            ];
+        });
+    }
+    catch (error) {
+        if (error.code === "ENOENT")
+            return [];
+        throw error;
+    }
+};
 const put = async (file, text) => {
     await mkdir(path.dirname(file), { recursive: true });
     await writeFile(`${file}.tmp`, text);
@@ -25,6 +57,15 @@ export const report = async (dir, e, cells) => {
         : {}).filter((entry) => typeof entry[1] === "string"));
     const patchHashes = stringRecord(runManifest.patch_hashes);
     const caseHashes = stringRecord(runManifest.case_hashes);
+    const experimentFile = String(runManifest.experiment_file ?? path.resolve("experiment.yml"));
+    const compositions = await Promise.all(e.variants.map(async (variant) => ({
+        variant: variant.id,
+        profile: variant.profile ?? "unknown",
+        patch: variant.patch ?? "unknown",
+        layers: variant.patch
+            ? await patchLayers(path.resolve(path.dirname(experimentFile), variant.patch))
+            : [],
+    })));
     const costFor = (variant, matching) => {
         const price = e.pricing?.[variant];
         if (!price)
@@ -96,6 +137,7 @@ export const report = async (dir, e, cells) => {
             patch_hashes: patchHashes,
             env_names: [...(e.run?.env_allowlist ?? [])].sort(),
         },
+        compositions,
         variants,
         per_case,
         comparisons,

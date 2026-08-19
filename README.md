@@ -8,7 +8,8 @@ workspace 中重复运行多个 DSH profile/patch 组合，基于官方持久化
 事件计算质量、token、费用、时延和稳定性，并输出可审计报告。
 
 产品包含完整的命令行闭环、三个 DSH 工具，以及 Web profile 会话中的“Profile 组合对比”
-页签：`profile_lab_compare` 完成后，页签自动读取当前会话最近一次结构化报告，
+页签：`profile_lab_run` 完成后会自动生成报告，页签读取当前会话最近一次结构化报告；
+`profile_lab_compare` 仍可重新读取已有输出目录，
 展示方案概览、基线差异、用例矩阵与 Pareto 前沿。云托管、账号系统和自动安装
 插件仍不属于本产品边界。
 
@@ -24,7 +25,7 @@ dsh plugin --profile web add github:young-tim/dsh-profile-lab
 
 安装后重启对应 DSH 进程，模型即可使用 `profile_lab_run`、
 `profile_lab_compare` 和 `profile_lab_gate`。Web profile 还会在“对话 / 轨迹”旁
-增加“Profile 组合对比”页签；当前会话尚未调用 `profile_lab_compare` 时，空状态会说明
+增加“Profile 组合对比”页签；当前会话尚无成功的运行或对比报告时，空状态会说明
 如何准备实验配置、让模型运行评测并生成报告。卸载命令：
 
 ```bash

@@ -1,3 +1,4 @@
+import type { JsonValue } from "@deepseek-ai/dsh-tools";
 import type { Cell, Experiment } from "../types.js";
 export { redact } from "../security/index.js";
 export declare const report: (dir: string, e: Experiment, cells: Cell[]) => Promise<{
@@ -20,6 +21,16 @@ export declare const report: (dir: string, e: Experiment, cells: Cell[]) => Prom
         };
         env_names: string[];
     };
+    compositions: {
+        variant: string;
+        profile: string;
+        patch: string;
+        layers: {
+            id: string;
+            keys: string[];
+            detail: JsonValue;
+        }[];
+    }[];
     variants: {
         cost: number | "unavailable";
         variant: string;

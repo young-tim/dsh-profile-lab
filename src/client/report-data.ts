@@ -27,6 +27,12 @@ export interface ProfileLabReportView {
   experiment: string;
   baseline: string;
   incomplete: boolean;
+  compositions?: Array<{
+    variant: string;
+    profile: string;
+    patch: string;
+    layers: Array<{ id: string; keys: string[]; detail?: unknown }>;
+  }>;
   variants: ProfileLabVariantView[];
   per_case: ProfileLabCaseView[];
   comparisons: ProfileLabComparisonView[];
@@ -43,6 +49,7 @@ const reportShape = (value: unknown): value is ProfileLabReportView =>
   typeof value.experiment === "string" &&
   typeof value.baseline === "string" &&
   typeof value.incomplete === "boolean" &&
+  (value.compositions === undefined || Array.isArray(value.compositions)) &&
   Array.isArray(value.variants) &&
   value.variants.every(
     (variant) =>
@@ -57,7 +64,9 @@ const reportShape = (value: unknown): value is ProfileLabReportView =>
   Array.isArray(value.pareto_quality_cost) &&
   Array.isArray(value.pareto_quality_latency);
 
-/** Find the newest successful profile_lab_compare result in a chat projection. */
+const reportTools = new Set(["profile_lab_run", "profile_lab_compare"]);
+
+/** Find the newest report produced by a Profile Lab run or compare call. */
 export const extractLatestReport = (
   nodes: readonly unknown[],
 ): ProfileLabReportView | null => {
@@ -66,7 +75,7 @@ export const extractLatestReport = (
     if (!record(node) || node.kind !== "tool-result" || node.isError === true)
       continue;
     const call = node.call;
-    if (!record(call) || call.name !== "profile_lab_compare") continue;
+    if (!record(call) || !reportTools.has(String(call.name))) continue;
     const content = Array.isArray(node.content) ? node.content : [];
     for (const block of content) {
       if (

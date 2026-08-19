@@ -40,7 +40,9 @@ export const summarize = (
     pass_rate: a.length ? pass / a.length : 0,
     error_rate: a.length ? error / a.length : 0,
     flaky: pass > 0 && pass < a.length,
-    repetition_label: a.length < 5 ? "insufficient-repetitions" : undefined,
+    ...(a.length < 5
+      ? { repetition_label: "insufficient-repetitions" as const }
+      : {}),
     median_duration_ms: median(n((c) => c.duration_ms)),
     p95_duration_ms: quantile(
       n((c) => c.duration_ms),

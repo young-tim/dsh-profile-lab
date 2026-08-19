@@ -30,14 +30,30 @@ describe("package surface", () =>
     });
     expect(tools).toHaveLength(3);
     const out = await mkdtemp(path.join(tmpdir(), "tool-"));
-    await tools[0]!.execute({
-      experiment: "examples/experiment.yml",
-      output: out,
-      driver: path.resolve("fixtures/fake-dsh"),
-    });
+    await expect(
+      tools[0]!.execute({
+        experiment: "examples/experiment.yml",
+        output: out,
+        driver: path.resolve("fixtures/fake-dsh"),
+      }),
+    ).resolves.toMatchObject({ version: 1, incomplete: false });
+    await expect(
+      readFile(path.join(out, "report.json"), "utf8"),
+    ).resolves.toContain('"version": 1');
     await expect(tools[1]!.execute({ output: out })).resolves.toMatchObject({
       version: 1,
     });
+    const compare = await tools[1]!.execute({ output: out });
+    expect(JSON.stringify(compare)).not.toContain("undefined");
+    const lossless = (value: unknown): boolean => {
+      if (value === undefined) return false;
+      if (typeof value === "number") return Number.isFinite(value);
+      if (Array.isArray(value)) return value.every(lossless);
+      if (value && typeof value === "object")
+        return Object.values(value).every(lossless);
+      return typeof value !== "bigint";
+    };
+    expect(lossless(compare)).toBe(true);
     await expect(
       tools[2]!.execute({ experiment: "examples/experiment.yml", output: out }),
     ).rejects.toThrow('missing required property "policy"');

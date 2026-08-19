@@ -9,6 +9,7 @@ import {
   readSession,
 } from "../src/dsh-adapter/index.js";
 import { redact, report } from "../src/report/index.js";
+import { sanitize } from "../src/security/index.js";
 import type { Cell, Experiment, Summary } from "../src/types.js";
 const summary = (pass_rate: number, error_rate = 0): Summary => ({
   variant: "x",
@@ -92,6 +93,15 @@ describe("decision services", () => {
     expect(a[2]).toContain("&lt;unsafe&gt;");
     expect(a[1]).toContain("## Reproduce");
     expect(a[2]).toContain("Per-case comparisons");
+    expect(JSON.parse(a[0]).compositions).toEqual([
+      { variant: "base", profile: "unknown", patch: "unknown", layers: [] },
+      {
+        variant: "candidate",
+        profile: "unknown",
+        patch: "unknown",
+        layers: [],
+      },
+    ]);
   });
 });
 
@@ -100,6 +110,12 @@ describe("explicit pricing decisions", () => {
     expect(
       redact("ds_abcdefghijklmnopqrstuvwxyz Authorization: secret-value"),
     ).toBe("[REDACTED] Authorization: [REDACTED]");
+    expect(
+      sanitize({ apiKey: "plain-value", nested: { token: "value" } }),
+    ).toEqual({
+      apiKey: "[REDACTED]",
+      nested: { token: "[REDACTED]" },
+    });
   });
   it("does not fabricate cost or Pareto members without pricing", async () => {
     const d = await mkdtemp(path.join(tmpdir(), "report-price-"));

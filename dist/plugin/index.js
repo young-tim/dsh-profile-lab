@@ -7,7 +7,8 @@ import path from "node:path";
 import { gateCandidates, validatePolicy } from "../gate/index.js";
 export const profile_lab_run = async (input, signal) => {
     const experiment = await loadExperiment(input.experiment);
-    return run(experiment, input.output, input.driver ?? "dsh", input.experiment, undefined, false, signal);
+    const cells = await run(experiment, input.output, input.driver ?? "dsh", input.experiment, undefined, false, signal);
+    return report(input.output, experiment, cells);
 };
 export const profile_lab_compare = async (input) => report(input.output, await loadResultExperiment(input.output, input.experiment), JSON.parse(await readFile(path.join(input.output, "journal.json"), "utf8")));
 export const profile_lab_gate = async (input) => {
@@ -34,8 +35,15 @@ export const profile_lab_gate = async (input) => {
 export const name = "dsh-profile-lab";
 export const inject = ["tools"];
 const resultSchema = {
-    experiment: { type: "string" },
-    output: { type: "string", required: true },
+    experiment: {
+        type: "string",
+        description: "Optional experiment YAML file override. Omit this when reading a completed output directory.",
+    },
+    output: {
+        type: "string",
+        required: true,
+        description: "Profile Lab result directory containing manifest.json and journal.json; this is a directory, not a file.",
+    },
 };
 const output = {
     schema: { type: "json" },
@@ -48,10 +56,14 @@ export const apply = (ctx) => {
     const dispose = [
         ctx.tools.register(defineTool({
             name: "profile_lab_run",
-            description: "Run an isolated DSH profile experiment.",
+            description: "Run an isolated DSH profile experiment and return its comparison report.",
             parameters: {
                 experiment: { type: "string", required: true },
-                output: { type: "string", required: true },
+                output: {
+                    type: "string",
+                    required: true,
+                    description: "New Profile Lab result directory for this run.",
+                },
                 driver: { type: "string" },
             },
             output,

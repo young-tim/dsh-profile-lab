@@ -9,6 +9,7 @@
     "baseline",
     "incomplete",
     "manifest",
+    "compositions",
     "variants",
     "per_case",
     "comparisons",
@@ -55,6 +56,32 @@
           "type": "array",
           "items": { "type": "string" },
           "uniqueItems": true
+        }
+      }
+    },
+    "compositions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["variant", "profile", "patch", "layers"],
+        "properties": {
+          "variant": { "type": "string" },
+          "profile": { "type": "string" },
+          "patch": { "type": "string" },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "keys", "detail"],
+              "properties": {
+                "id": { "type": "string" },
+                "keys": { "type": "array", "items": { "type": "string" } },
+                "detail": {}
+              }
+            }
+          }
         }
       }
     },

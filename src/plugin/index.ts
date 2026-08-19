@@ -18,7 +18,7 @@ export const profile_lab_run = async (
   signal?: AbortSignal,
 ) => {
   const experiment = await loadExperiment(input.experiment);
-  return run(
+  const cells = await run(
     experiment,
     input.output,
     input.driver ?? "dsh",
@@ -27,6 +27,7 @@ export const profile_lab_run = async (
     false,
     signal,
   );
+  return report(input.output, experiment, cells);
 };
 export const profile_lab_compare = async (input: {
   experiment?: string;
@@ -72,8 +73,17 @@ export const profile_lab_gate = async (input?: {
 export const name = "dsh-profile-lab";
 export const inject = ["tools"];
 const resultSchema = {
-  experiment: { type: "string" },
-  output: { type: "string", required: true },
+  experiment: {
+    type: "string",
+    description:
+      "Optional experiment YAML file override. Omit this when reading a completed output directory.",
+  },
+  output: {
+    type: "string",
+    required: true,
+    description:
+      "Profile Lab result directory containing manifest.json and journal.json; this is a directory, not a file.",
+  },
 } as const;
 const output = {
   schema: { type: "json" as const },
@@ -87,10 +97,15 @@ export const apply = (ctx: { tools: Pick<ToolRuntime, "register"> }) => {
     ctx.tools.register(
       defineTool({
         name: "profile_lab_run",
-        description: "Run an isolated DSH profile experiment.",
+        description:
+          "Run an isolated DSH profile experiment and return its comparison report.",
         parameters: {
           experiment: { type: "string" as const, required: true },
-          output: { type: "string" as const, required: true },
+          output: {
+            type: "string" as const,
+            required: true,
+            description: "New Profile Lab result directory for this run.",
+          },
           driver: { type: "string" as const },
         },
         output,

@@ -18,7 +18,9 @@ export const sanitize = <T>(value: T): T => {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([key, item]) => [
         key,
-        sanitize(item),
+        /^(?:api[_-]?key|token|secret|password|authorization)$/i.test(key)
+          ? "[REDACTED]"
+          : sanitize(item),
       ]),
     ) as T;
   return value;
